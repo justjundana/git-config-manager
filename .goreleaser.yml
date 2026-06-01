@@ -1,0 +1,46 @@
+version: 2
+
+project_name: gcm
+
+builds:
+  - main: ./cmd/gcm
+    binary: gcm
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+    ldflags:
+      - -s -w
+      - -X github.com/justjundana/git-config-manager/pkg/version.Version={{.Version}}
+      - -X github.com/justjundana/git-config-manager/pkg/version.Commit={{.Commit}}
+      - -X github.com/justjundana/git-config-manager/pkg/version.Date={{.Date}}
+
+archives:
+  - format: binary
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
