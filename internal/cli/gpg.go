@@ -1,0 +1,309 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/justjundana/git-config-manager/internal/audit"
+	"github.com/justjundana/git-config-manager/internal/gpg"
+	"github.com/justjundana/git-config-manager/internal/profile"
+	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	"github.com/justjundana/git-config-manager/pkg/ui"
+
+	"github.com/spf13/cobra"
+)
+
+func newGPGCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gpg",
+		Short: "Manage GPG keys",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return gpgListRun()
+		},
+	}
+
+	cmd.AddCommand(newGPGGenerateCmd())
+	cmd.AddCommand(newGPGListCmd())
+	cmd.AddCommand(newGPGSignCmd())
+	cmd.AddCommand(newGPGTestCmd())
+	cmd.AddCommand(newGPGUploadCmd())
+
+	return cmd
+}
+
+func newGPGGenerateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "generate <profile>",
+		Short: "Generate a new GPG key for a profile",
+		Args:  requireArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			profileName := args[0]
+
+			p, err := ctr.ProfileManager.Get(profileName)
+			if err != nil {
+				ui.Error("profile %q not found", profileName)
+				ui.Blank()
+				ui.Print("  To see available profiles: gcm profile list")
+				return profileNotFoundError(profileName)
+			}
+
+			sp := ui.NewSpinner("Generating GPG key...")
+			sp.Start()
+
+			keyInfo, err := ctr.GPGManager.Generate(gpg.GenerateOptions{
+				Name:  p.Git.User.Name,
+				Email: p.Git.User.Email,
+			})
+			if err != nil {
+				sp.StopError("Failed to generate GPG key")
+				ctr.AuditLogger.Log(audit.ActionGPGGenerate, profileName, nil, err)
+				return err
+			}
+
+			sp.Stop("GPG key generated!")
+			ctr.AuditLogger.Log(audit.ActionGPGGenerate, profileName,
+				map[string]string{"key_id": keyInfo.KeyID}, nil)
+
+			ui.Blank()
+			ui.Detail("Key ID", keyInfo.KeyID)
+			ui.Detail("Fingerprint", keyInfo.Fingerprint)
+			ui.Detail("Email", keyInfo.Email)
+
+			// Update profile
+			p.GPG = &profile.GPGConfig{KeyID: keyInfo.KeyID}
+			p.Git.Commit.GPGSign = profile.BoolPtr(true)
+			p.Git.User.SigningKey = keyInfo.KeyID
+			_ = ctr.ProfileManager.Update(p)
+
+			for _, def := range authenticatedProvidersForProfile(profileName, p, providerpkg.CapabilityGPGKeys) {
+				if setupGPGKeyUploadForProvider(cmd.Context(), profileName, p, def, keyInfo.KeyID) {
+					ctr.AuditLogger.Log(audit.ActionGPGGenerate, profileName,
+						map[string]string{"key_id": keyInfo.KeyID, "uploaded": "true", "provider": string(def.ID)}, nil)
+				}
+			}
+
+			ui.NextSteps([]string{
+				fmt.Sprintf("Test signing: gcm gpg test %s", profileName),
+			})
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func newGPGListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "list", Short: "List GPG keys", Aliases: []string{"ls"},
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return gpgListRun()
+		},
+	}
+}
+
+func gpgListRun() error {
+	if !ctr.GPGManager.IsInstalled() {
+		ui.Warning("GPG is not installed on your system")
+		ui.Info("Install GPG: https://gnupg.org/download/")
+		return nil
+	}
+
+	keys, err := ctr.GPGManager.List()
+	if err != nil {
+		return err
+	}
+
+	if len(keys) == 0 {
+		ui.Info("No GPG keys found")
+		return nil
+	}
+
+	headers := []string{"Key ID", "Name", "Email", "Created", "Trust"}
+	var rows [][]string
+	for _, k := range keys {
+		rows = append(rows, []string{
+			k.KeyID, k.Name, k.Email,
+			k.Created.Format("2006-01-02"), k.Trust,
+		})
+	}
+
+	ui.SimpleTable(headers, rows)
+	return nil
+}
+
+func newGPGSignCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "sign",
+		Short: "Manage commit signing",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use: "enable <profile>", Short: "Enable commit signing", Args: requireArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			p, err := ctr.ProfileManager.Get(args[0])
+			if err != nil {
+				ui.Error("profile %q not found", args[0])
+				ui.Blank()
+				ui.Print("  To see available profiles: gcm profile list")
+				return profileNotFoundError(args[0])
+			}
+			if p.GPG == nil || p.GPG.KeyID == "" {
+				return fmt.Errorf("profile %q has no GPG key. Generate one: gcm gpg generate %s", args[0], args[0])
+			}
+			p.Git.Commit.GPGSign = profile.BoolPtr(true)
+			p.Git.User.SigningKey = p.GPG.KeyID
+			if err := ctr.ProfileManager.Update(p); err != nil {
+				return err
+			}
+			ui.Success("Commit signing enabled for %q", args[0])
+			return nil
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use: "disable <profile>", Short: "Disable commit signing", Args: requireArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			p, err := ctr.ProfileManager.Get(args[0])
+			if err != nil {
+				ui.Error("profile %q not found", args[0])
+				ui.Blank()
+				ui.Print("  To see available profiles: gcm profile list")
+				return profileNotFoundError(args[0])
+			}
+			p.Git.Commit.GPGSign = profile.BoolPtr(false)
+			if err := ctr.ProfileManager.Update(p); err != nil {
+				return err
+			}
+			ui.Success("Commit signing disabled for %q", args[0])
+			return nil
+		},
+	})
+
+	return cmd
+}
+
+func newGPGTestCmd() *cobra.Command {
+	return &cobra.Command{
+		Use: "test <profile>", Short: "Test GPG signing", Args: requireArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			p, err := ctr.ProfileManager.Get(args[0])
+			if err != nil {
+				ui.Error("profile %q not found", args[0])
+				ui.Blank()
+				ui.Print("  To see available profiles: gcm profile list")
+				return profileNotFoundError(args[0])
+			}
+			if p.GPG == nil || p.GPG.KeyID == "" {
+				return fmt.Errorf("profile %q has no GPG key configured", args[0])
+			}
+
+			sp := ui.NewSpinner("Testing GPG signing...")
+			sp.Start()
+
+			if err := ctr.GPGManager.TestSigning(p.GPG.KeyID); err != nil {
+				sp.StopError("GPG signing test failed")
+				return err
+			}
+
+			sp.Stop("GPG signing works!")
+			return nil
+		},
+	}
+}
+
+func newGPGUploadCmd() *cobra.Command {
+	var (
+		force        bool
+		providerName string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "upload <profile>",
+		Short: "Upload GPG key to a provider",
+		Long: `Upload the profile's GPG public key to GitHub, GitLab, or another configured provider for commit verification.
+
+Checks for duplicates before uploading. Use --force to skip the check.
+
+Examples:
+	  gcm gpg upload work-github --provider github
+	  gcm gpg upload work-gitlab --provider gitlab
+	  gcm gpg upload work-gitlab --provider gitlab --force`,
+		Args: requireArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			profileName := args[0]
+
+			p, err := ctr.ProfileManager.Get(profileName)
+			if err != nil {
+				ui.Error("profile %q not found", profileName)
+				return profileNotFoundError(profileName)
+			}
+			if p.GPG == nil || p.GPG.KeyID == "" {
+				ui.Error("profile %q has no GPG key configured", profileName)
+				ui.Blank()
+				ui.Print("  To generate one: gcm gpg generate %s", profileName)
+				return profileMissingGPGKeyError(profileName)
+			}
+
+			def, err := selectProfileProviderWithCapability(profileName, p, providerName, providerpkg.CapabilityGPGKeys)
+			if err != nil {
+				return err
+			}
+
+			token, err := loadProviderToken(profileName, def, p)
+			if err != nil || token.AccessToken == "" {
+				ui.Error("No %s token found for profile %q", def.DisplayName, profileName)
+				ui.Blank()
+				ui.Print("  Connect first: gcm connect %s --provider %s", profileName, def.ID)
+				return missingProviderTokenError(def.DisplayName, profileName)
+			}
+
+			ctx := context.Background()
+
+			// Check for duplicates
+			if !force {
+				sp := ui.NewSpinner(fmt.Sprintf("Checking if GPG key already exists on %s...", def.DisplayName))
+				sp.Start()
+
+				exists, checkErr := providerGPGKeyExists(ctx, def, token, p.GPG.KeyID)
+				if checkErr != nil {
+					sp.StopError("Could not check existing keys")
+					ui.Warning("Check failed: %v", checkErr)
+					ui.Print("  Use --force to skip the duplicate check")
+					return checkErr
+				}
+				if exists {
+					sp.Stop(fmt.Sprintf("GPG key already exists on %s", def.DisplayName))
+					ui.Info("This GPG key is already uploaded — no action needed.")
+					return nil
+				}
+				sp.Stop(fmt.Sprintf("Key not found on %s — uploading", def.DisplayName))
+			}
+
+			armoredKey, exportErr := ctr.GPGManager.GetPublicKey(p.GPG.KeyID)
+			if exportErr != nil {
+				ui.Error("Could not export GPG public key: %v", exportErr)
+				return exportErr
+			}
+
+			sp2 := ui.NewSpinner(fmt.Sprintf("Uploading GPG key to %s...", def.DisplayName))
+			sp2.Start()
+
+			if uploadErr := uploadProviderGPGKey(ctx, def, token, armoredKey); uploadErr != nil {
+				sp2.StopError("Failed to upload GPG key")
+				ui.Warning("Upload failed: %v", uploadErr)
+				ui.Print("  You can upload manually at: %s", providerManualKeyURL(def, "gpg"))
+				return uploadErr
+			}
+
+			sp2.Stop(fmt.Sprintf("GPG key uploaded to %s!", def.DisplayName))
+			ctr.AuditLogger.Log(audit.ActionGPGGenerate, profileName,
+				map[string]string{"action": "upload", "key_id": p.GPG.KeyID, "uploaded": "true", "provider": string(def.ID)}, nil)
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip duplicate check")
+	cmd.Flags().StringVar(&providerName, "provider", "", "Provider to upload to (github, gitlab)")
+	return cmd
+}
