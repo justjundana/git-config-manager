@@ -250,6 +250,7 @@ gcm backup prune --keep 5       # Keep latest N backups
 gcm validate [profile]          # Validate profile(s)
 gcm doctor                      # System health check
 gcm clean                       # Clean cache
+gcm update                      # Self-update to latest version
 gcm version                     # Show version info
 ```
 

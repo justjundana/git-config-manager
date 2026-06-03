@@ -1025,6 +1025,34 @@ gcm clean --all      # also remove logs directory
 
 ---
 
+## `gcm update`
+
+Self-update GCM to the latest version from GitHub Releases.
+
+```bash
+gcm update                  # update to latest stable
+gcm update --check          # check without installing
+gcm update --prerelease     # include pre-release versions
+gcm update --force          # force reinstall even if on latest
+```
+
+| Flag           | Default | Description                              |
+| -------------- | ------- | ---------------------------------------- |
+| `--check`      | false   | Check for updates without installing     |
+| `--force`      | false   | Force update even if already on latest   |
+| `--prerelease` | false   | Include pre-release versions             |
+
+**How it works:**
+1. Queries the GitHub Releases API for the latest version
+2. Downloads the platform-specific binary (`gcm-<os>-<arch>`)
+3. Verifies SHA-256 checksum against `checksums.txt`
+4. Creates a backup of the current binary
+5. Replaces the binary atomically (rolls back on failure)
+
+**Note:** Development builds (`gcm version` shows "dev") cannot be updated. Build from source or use the install script.
+
+---
+
 ## `gcm version`
 
 Show version information.
@@ -1190,6 +1218,7 @@ Backup
 Maintenance
   gcm validate [name]                           Validate profiles
   gcm clean [--all]                             Clean cache/logs
+  gcm update [--check|--force|--prerelease]     Self-update GCM
 
 Internal (used by git)
   gcm credential-helper get                     Provide credentials to git

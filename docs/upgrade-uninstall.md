@@ -6,6 +6,34 @@ How to update GCM to a new version or remove it completely.
 
 ## Upgrading
 
+### Self-Update
+
+```bash
+gcm update              # download and install the latest stable release
+gcm update --check      # check for updates without installing
+```
+
+This is the simplest method — it downloads the correct binary for your platform, verifies the SHA-256 checksum, and replaces the running binary with safe rollback on failure.
+
+### Install Script
+
+Re-run the install script — it will detect and replace the existing binary:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash
+```
+
+### Download Binary Manually
+
+Download the binary for your platform from [GitHub Releases](https://github.com/justjundana/git-config-manager/releases):
+
+```bash
+# Example for macOS ARM (Apple Silicon):
+curl -fsSL https://github.com/justjundana/git-config-manager/releases/latest/download/gcm-darwin-arm64 -o gcm
+chmod +x gcm
+sudo mv gcm /usr/local/bin/gcm
+```
+
 ### From Source
 
 ```bash

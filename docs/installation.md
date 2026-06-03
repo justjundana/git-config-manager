@@ -81,6 +81,23 @@ gcm version     # show version, commit, build date
 gcm doctor      # check Git, SSH, GPG, and shell integration
 ```
 
+## Keeping Up to Date
+
+Update GCM with a single command:
+
+```bash
+gcm update              # download and install the latest release
+gcm update --check      # check for updates without installing
+```
+
+Or re-run the install script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash
+```
+
+See [Upgrade & Uninstall](upgrade-uninstall.md) for all upgrade methods.
+
 ## Next Steps
 
 After installing, continue with:

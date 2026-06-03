@@ -75,6 +75,7 @@ The Cobra command layer. Each file owns one top-level command group.
 | `credential_helper.go` | `credential-helper get\|store\|erase` (hidden, called by git) |
 | `init_cmd.go`    | `init`                                                |
 | `clean.go`       | `clean`                                               |
+| `update.go`      | `update`                                              |
 | `version_cmd.go` | `version`                                             |
 | `helpers.go`     | `formatTimeAgo()`, `formatBytes()`                    |
 | `cli_test.go`    | Tests for CLI commands                                |

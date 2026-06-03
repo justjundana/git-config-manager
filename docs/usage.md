@@ -764,6 +764,7 @@ Backup
 Maintenance
   gcm validate [name]
   gcm clean [--all]
+  gcm update [--check|--force|--prerelease]
 ```
 
 ---

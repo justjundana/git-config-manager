@@ -325,7 +325,13 @@ See [Security Model](security.md) for the full threat model.
 
 ### Does GCM phone home?
 
-No. GCM never sends telemetry, checks for updates automatically, or contacts any server other than the configured GitHub API (and only when you explicitly run `gcm github` commands).
+No. GCM never sends telemetry or checks for updates automatically. The only network calls are:
+- **GitHub/GitLab API** — when you explicitly run provider commands (`gcm github`, `gcm gitlab`)
+- **GitHub Releases API** — only when you explicitly run `gcm update`
+
+### How do I update GCM?
+
+Run `gcm update`. It checks GitHub Releases, downloads the correct binary for your platform, verifies the SHA-256 checksum, and replaces the running binary. Use `gcm update --check` to see if an update is available without installing it. See [Upgrade & Uninstall](upgrade-uninstall.md) for alternative methods.
 
 ### Can GCM access my private repos?
 
