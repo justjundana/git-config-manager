@@ -1206,6 +1206,21 @@ func TestNonInteractiveCommandRunPaths(t *testing.T) {
 	ctr = newRepairTestContainer(t)
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 
+	// Isolate working directory into a temp git repo so that commands like
+	// "refresh --silent" cannot read the real .git/gcm-session marker and
+	// accidentally overwrite the real repo's .git/config with test data.
+	isoDir := t.TempDir()
+	cmd := exec.Command("git", "init", isoDir)
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1")
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git init isolation dir: %v", err)
+	}
+	origDir, _ := os.Getwd()
+	if err := os.Chdir(isoDir); err != nil {
+		t.Fatalf("chdir isolation: %v", err)
+	}
+	t.Cleanup(func() { os.Chdir(origDir) })
+
 	missingBackup := filepath.Join(t.TempDir(), "missing-backup.tar.gz")
 	commands := [][]string{
 		{"version"},
