@@ -37,6 +37,10 @@ func NewRootCmd() *cobra.Command {
 			"  gcm profile create <name> -i  Create a new profile interactively\n" +
 			"  gcm ssh generate <profile>    Generate SSH key for a profile\n" +
 			"  gcm switch-provider <p> <id>  Move a profile to another provider\n\n" +
+			ui.Bold("Maintenance") + "\n" +
+			"  gcm update                    Self-update to the latest version\n" +
+			"  gcm doctor                    System health check\n" +
+			"  gcm version                   Show version info\n\n" +
 			"Run \"gcm <command> --help\" for details on any command.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -81,6 +85,7 @@ func NewRootCmd() *cobra.Command {
 
 	// ─── Utilities ───
 	rootCmd.AddCommand(newVersionCmd())
+	rootCmd.AddCommand(newUpdateCmd())
 	rootCmd.AddCommand(newCleanCmd())
 
 	// ─── Internal (used by git) ───
