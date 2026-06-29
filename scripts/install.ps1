@@ -5,7 +5,7 @@ param(
     [switch]$Quiet,
     [string]$Version,
     [switch]$AddToPath,
-    [switch]$Init,
+    [switch]$NoInit,
     [switch]$Help
 )
 
@@ -113,15 +113,15 @@ function Show-Help {
     Write-Host "  -Quiet          Run in quiet mode (minimal output)"
     Write-Host "  -Version VER    Install specific version (e.g., v1.0.0)"
     Write-Host "  -AddToPath      Add the install directory to the user PATH"
-    Write-Host "  -Init           Run 'gcm init' after install (mutates shell/git config)"
+    Write-Host "  -NoInit         Skip 'gcm init' (do not modify shell/git config)"
     Write-Host "  -Help           Show this help message"
     Write-Host ""
     Write-Host "Examples:"
-    Write-Host "  .\install.ps1                   # Install latest version"
+    Write-Host "  .\install.ps1                   # Install latest version and initialize GCM"
     Write-Host "  .\install.ps1 -Quiet            # Install quietly"
     Write-Host "  .\install.ps1 -Version v1.0.0   # Install specific version"
     Write-Host "  .\install.ps1 -AddToPath        # Install and update PATH explicitly"
-    Write-Host "  .\install.ps1 -Init             # Install and explicitly initialize GCM"
+    Write-Host "  .\install.ps1 -NoInit           # Install without modifying shell/git config"
 }
 
 function Get-ReleaseAssetName {
@@ -336,7 +336,7 @@ function Add-ToPath {
     $env:PATH = "$InstallDir;$env:PATH"
 }
 
-# Run gcm init only when explicitly requested.
+# Run gcm init (default) unless -NoInit was passed.
 function Run-Init {
     param([string]$InstallDir)
 
@@ -347,7 +347,7 @@ function Run-Init {
         exit 1
     }
 
-    Print-Step "Initializing GCM by explicit request..."
+    Print-Step "Initializing GCM shell integration..."
 
     if (-not $Quiet) {
         Write-Host -NoNewline "   $($Colors.Dim)Configuring shell integration... $($Colors.Purple)$($SpinChars[0])$($Colors.Reset) "
@@ -433,8 +433,12 @@ function Show-Completion {
     Write-Host "$($Colors.Bold)$($Colors.White)Next Steps:$($Colors.Reset)"
     Write-Host " 1. Restart your PowerShell/Command Prompt"
     Write-Host " 2. Verify with 'gcm version'"
-    Write-Host " 3. Initialize with 'gcm init' when you want shell hooks"
-    Write-Host " 4. Create your first profile with 'gcm profile create <name>'"
+    if ($Initialized) {
+        Write-Host " 3. Create your first profile with 'gcm profile create <name>'"
+    } else {
+        Write-Host " 3. Initialize with 'gcm init' when you want shell hooks"
+        Write-Host " 4. Create your first profile with 'gcm profile create <name>'"
+    }
     Print-Separator "┄"
     Write-Host "$($Colors.Bold)$($Colors.White)Quick Commands:$($Colors.Reset)"
     Write-Host " • gcm profile create work   - Create a profile"
@@ -587,11 +591,11 @@ function Main {
         Write-Host ""
     }
 
-    if ($Init) {
-        Run-Init $installDir
+    if ($NoInit) {
+        Print-Info "GCM initialization was skipped (-NoInit). Run 'gcm init' when you are ready to install shell hooks."
         Write-Host ""
     } else {
-        Print-Info "GCM initialization was not run. Run 'gcm init' when you are ready to install shell hooks."
+        Run-Init $installDir
         Write-Host ""
     }
 
@@ -601,7 +605,7 @@ function Main {
         $null = & $binaryPath version 2>$null
         $installedVersion = & $binaryPath version 2>$null | Select-Object -First 1
         Print-Success "Installation verified: $($Colors.Bold)$installedVersion$($Colors.Reset)"
-        Show-Completion $latestVersion $AddToPath.IsPresent $Init.IsPresent
+        Show-Completion $latestVersion $AddToPath.IsPresent (-not $NoInit.IsPresent)
     }
     catch {
         Print-Warning "Installation completed, but verification failed"

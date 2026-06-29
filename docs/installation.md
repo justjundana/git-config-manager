@@ -36,12 +36,12 @@ Make sure `$(go env GOPATH)/bin` is on your `PATH`.
 
 ## Prebuilt Binaries
 
-Release binaries are published by GoReleaser for each supported platform. The installer downloads `checksums.txt`, verifies the binary with SHA-256, and does not modify your shell environment unless you pass an opt-in flag:
+Release binaries are published by GoReleaser for each supported platform. The installer downloads `checksums.txt`, verifies the binary with SHA-256, and by default also runs `gcm init` to set up shell integration (auto-switch on `cd` and the prompt profile indicator). Pass `--no-init` to skip any shell/git config changes:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash
 curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --add-to-path
-curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --add-to-path --init
+curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --no-init
 ```
 
 On Windows, use PowerShell:

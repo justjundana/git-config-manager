@@ -65,11 +65,11 @@
 curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash
 ```
 
-The installer downloads the release checksum manifest (`checksums.txt`), verifies the binary checksum, and installs only the `gcm` binary by default. It does not edit your shell files or run `gcm init` unless you explicitly opt in:
+The installer downloads the release checksum manifest (`checksums.txt`), verifies the binary checksum, installs the `gcm` binary, and by default runs `gcm init` to set up shell integration (auto-switch on `cd` and the prompt profile indicator). Pass `--no-init` to skip any shell/git config changes:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --add-to-path
-curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --add-to-path --init
+curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --no-init
 ```
 
 ### From Source
@@ -90,7 +90,7 @@ gcm setup
 # Option B: Step by step
 gcm profile create work --interactive   # 1. Create a profile
 gcm use work                            # 2. Activate it
-gcm init                                # 3. Optional shell integration (auto-switch on cd)
+gcm init                                # 3. Shell integration (auto-switch on cd) — already run by the installer unless you passed --no-init
 gcm doctor                              # 4. Verify everything works
 ```
 

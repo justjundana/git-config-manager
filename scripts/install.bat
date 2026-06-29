@@ -54,7 +54,12 @@ if /i "%~1"=="--add-to-path" (
     goto :parse_args
 )
 if /i "%~1"=="--init" (
-    set "PS_ARGS=!PS_ARGS! -Init"
+    REM Initialization is on by default; flag kept for backward compatibility.
+    shift
+    goto :parse_args
+)
+if /i "%~1"=="--no-init" (
+    set "PS_ARGS=!PS_ARGS! -NoInit"
     shift
     goto :parse_args
 )

@@ -7,7 +7,9 @@ set -e
 QUIET_MODE=false
 SPECIFIC_VERSION=""
 ADD_TO_PATH=auto
-INIT_AFTER_INSTALL=false
+# Shell integration (auto-switch + prompt indicator) is installed by default.
+# Use --no-init to skip mutating shell/git config.
+INIT_AFTER_INSTALL=true
 
 # Parse command line arguments
 parse_arguments() {
@@ -31,6 +33,10 @@ parse_arguments() {
                 ;;
             --init)
                 INIT_AFTER_INSTALL=true
+                shift
+                ;;
+            --no-init)
+                INIT_AFTER_INSTALL=false
                 shift
                 ;;
             --help|-h)
@@ -57,15 +63,16 @@ show_help() {
     echo "  --version, -v VER   Install specific version (e.g., v1.0.0)"
     echo "  --add-to-path       Add the install directory to your shell config (default: auto)"
     echo "  --no-add-to-path    Do not modify shell config for PATH"
-    echo "  --init              Run 'gcm init' after install (mutates shell/git config)"
+    echo "  --init              Run 'gcm init' after install (default; mutates shell/git config)"
+    echo "  --no-init           Skip 'gcm init' (do not modify shell/git config)"
     echo "  --help, -h          Show this help message"
     echo
     echo "Examples:"
-    echo "  $0                  # Install latest version"
+    echo "  $0                  # Install latest version and initialize GCM"
     echo "  $0 --quiet          # Install quietly"
     echo "  $0 --version v1.0.0 # Install specific version"
     echo "  $0 --add-to-path    # Install and update shell PATH explicitly"
-    echo "  $0 --init           # Install and explicitly initialize GCM"
+    echo "  $0 --no-init        # Install without modifying shell/git config"
 }
 
 # Colors and styles
@@ -534,13 +541,13 @@ add_to_path_if_requested() {
     configure_path_manually "$install_dir"
 }
 
-# Run gcm init only when explicitly requested.
+# Run gcm init (default) unless --no-init was passed.
 run_init_if_requested() {
     local install_dir="$1"
     local gcm_binary="${install_dir}/gcm"
 
     if [[ "$INIT_AFTER_INSTALL" != "true" ]]; then
-        print_info "GCM initialization was not run. Run 'gcm init' when you are ready to install shell hooks."
+        print_info "GCM initialization was skipped (--no-init). Run 'gcm init' when you are ready to install shell hooks."
         return
     fi
 
@@ -549,7 +556,7 @@ run_init_if_requested() {
         exit 1
     fi
 
-    print_step "Initializing GCM by explicit request..."
+    print_step "Initializing GCM shell integration..."
     start_spinner "Installing shell configuration" "$PURPLE"
 
     local init_output
@@ -561,9 +568,8 @@ run_init_if_requested() {
         fi
     else
         stop_spinner_fail "Shell configuration"
-        print_error "gcm init failed. No fallback shell mutation was applied."
+        print_warning "gcm init did not complete. The binary is installed; run 'gcm init' manually to enable shell hooks."
         [[ -n "$init_output" ]] && echo "$init_output"
-        exit 1
     fi
 }
 
@@ -650,8 +656,12 @@ show_completion() {
     echo -e "${BOLD}${WHITE}Next Steps:${NC}"
     echo " 1. $restart_instruction"
     echo " 2. Verify with 'gcm version'"
-    echo " 3. Initialize with 'gcm init' when you want shell hooks"
-    echo " 4. Create your first profile with 'gcm profile create <name>'"
+    if [[ "$INIT_AFTER_INSTALL" == "true" ]]; then
+        echo " 3. Create your first profile with 'gcm profile create <name>'"
+    else
+        echo " 3. Initialize with 'gcm init' when you want shell hooks"
+        echo " 4. Create your first profile with 'gcm profile create <name>'"
+    fi
     print_separator "┄"
     echo -e "${BOLD}${WHITE}Quick Commands:${NC}"
     echo " • gcm profile create work   - Create a profile"
