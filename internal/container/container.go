@@ -8,6 +8,7 @@ import (
 	"github.com/justjundana/git-config-manager/internal/github"
 	"github.com/justjundana/git-config-manager/internal/gitlab"
 	"github.com/justjundana/git-config-manager/internal/gpg"
+	"github.com/justjundana/git-config-manager/internal/keyledger"
 	"github.com/justjundana/git-config-manager/internal/profile"
 	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
 	"github.com/justjundana/git-config-manager/internal/providerclient"
@@ -31,6 +32,7 @@ type Container struct {
 	ProfileSwitcher  *profile.Switcher
 	SSHManager       *ssh.Manager
 	GPGManager       *gpg.Manager
+	KeyLedger        *keyledger.Ledger
 	GitHubClient     *github.Client
 	GitLabClient     *gitlab.Client
 	ProviderClient   *providerclient.Router
@@ -83,6 +85,7 @@ func New(cfg *config.Config, log *logger.Logger) *Container {
 	ps := profile.NewSwitcher(cfg, pm, log)
 	sshMgr := ssh.NewManager(cfg, log)
 	gpgMgr := gpg.NewManager(cfg, log)
+	keyLedger := keyledger.New()
 	shellMgr := shell.NewManager(log)
 	tmplMgr := template.NewManager(cfg, fs, log)
 	bkpMgr := backup.NewManager(cfg, log)
@@ -97,6 +100,7 @@ func New(cfg *config.Config, log *logger.Logger) *Container {
 		ProfileSwitcher:  ps,
 		SSHManager:       sshMgr,
 		GPGManager:       gpgMgr,
+		KeyLedger:        keyLedger,
 		GitHubClient:     ghClient,
 		GitLabClient:     glClient,
 		ProviderClient:   providerClient,

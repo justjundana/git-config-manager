@@ -575,6 +575,31 @@ If the provider rejects the upload because the key is already registered but it 
 
 ---
 
+### `gcm ssh clean`
+
+Remove SSH keys that GCM generated but that are no longer referenced by any profile.
+
+```bash
+gcm ssh clean              # prompt before deleting
+gcm ssh clean --dry-run    # list orphaned keys without deleting
+gcm ssh clean --yes        # delete without prompting
+```
+
+| Flag        | Short | Default | Description                                    |
+| ----------- | ----- | ------- | ---------------------------------------------- |
+| `--yes`     | `-y`  | `false` | Skip confirmation                              |
+| `--dry-run` |       | `false` | Show what would be removed without deleting it |
+
+**What it does:**
+1. Loads the generated-keys ledger (`~/.gcm/generated-keys.json`)
+2. Compares each recorded key against the SSH key paths used by every profile
+3. Lists keys that GCM generated but no profile references anymore
+4. After confirmation, deletes the private/public key files, removes the key from the SSH agent, and prunes the ledger entry
+
+Only keys that GCM itself generated are ever considered. SSH keys you created yourself, or keys GCM merely linked to a profile (adopted), are never recorded in the ledger and are therefore always left untouched.
+
+---
+
 ## `gcm gpg`
 
 Manage GPG keys. Running `gcm gpg` with no subcommand defaults to `gcm gpg list`.
@@ -655,6 +680,31 @@ gcm gpg upload work-gitlab --provider gitlab --force    # skip duplicate check
 3. Lists existing GPG keys on that provider and compares by key ID
 4. If the key already exists, reports "already uploaded" and exits
 5. Otherwise, exports the armored public key and uploads to the provider
+
+---
+
+### `gcm gpg clean`
+
+Remove GPG keys that GCM generated but that are no longer referenced by any profile.
+
+```bash
+gcm gpg clean              # prompt before deleting
+gcm gpg clean --dry-run    # list orphaned keys without deleting
+gcm gpg clean --yes        # delete without prompting
+```
+
+| Flag        | Short | Default | Description                                    |
+| ----------- | ----- | ------- | ---------------------------------------------- |
+| `--yes`     | `-y`  | `false` | Skip confirmation                              |
+| `--dry-run` |       | `false` | Show what would be removed without deleting it |
+
+**What it does:**
+1. Loads the generated-keys ledger (`~/.gcm/generated-keys.json`)
+2. Compares each recorded key against the GPG key IDs used by every profile
+3. Lists keys that GCM generated but no profile references anymore
+4. After confirmation, deletes each key from the local GPG keyring and prunes the ledger entry
+
+Only keys that GCM itself generated are ever considered. GPG keys you created yourself are never recorded in the ledger and are therefore always left untouched.
 
 ---
 

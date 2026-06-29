@@ -29,6 +29,8 @@ func newRepairTestContainer(t *testing.T) *container.Container {
 	t.Setenv("GIT_CONFIG_SYSTEM", "/dev/null")
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
+	t.Setenv("GNUPGHOME", filepath.Join(tmp, "gpg"))
+	t.Setenv("SSH_AUTH_SOCK", "")
 
 	cfg := config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(tmp, "profiles")

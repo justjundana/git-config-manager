@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/justjundana/git-config-manager/internal/audit"
+	"github.com/justjundana/git-config-manager/internal/keyledger"
 	"github.com/justjundana/git-config-manager/internal/profile"
 	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
 	"github.com/justjundana/git-config-manager/internal/ssh"
@@ -29,6 +30,7 @@ func newSSHCmd() *cobra.Command {
 	cmd.AddCommand(newSSHTestCmd())
 	cmd.AddCommand(newSSHCopyCmd())
 	cmd.AddCommand(newSSHUploadCmd())
+	cmd.AddCommand(newSSHCleanCmd())
 
 	return cmd
 }
@@ -117,6 +119,17 @@ Examples:
 			sp.Stop("SSH key generated!")
 			ctr.AuditLogger.Log(audit.ActionSSHGenerate, profileName,
 				map[string]string{"type": keyInfo.Type, "path": keyInfo.Path}, nil)
+
+			// Record the key in the generated-keys ledger so `gcm ssh clean` can
+			// later distinguish it from pre-existing keys. Adopted keys are never
+			// recorded and are therefore always left untouched.
+			if ledgerErr := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{
+				Profile:     profileName,
+				KeyPath:     keyInfo.Path,
+				Fingerprint: keyInfo.Fingerprint,
+			}); ledgerErr != nil {
+				ui.Warning("Could not record generated key in ledger: %v", ledgerErr)
+			}
 
 			ui.Blank()
 			printSSHKeyDetails(keyInfo)
