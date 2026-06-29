@@ -571,11 +571,19 @@ function Main {
     $binaryPath = Download-Binary $latestVersion $platform $installDir
     Write-Host ""
 
-    if ($AddToPath) {
+    # Add to PATH: auto-detect if install dir is missing from PATH
+    $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+    $pathEntries = @()
+    if ($userPath) {
+        $pathEntries = $userPath -split ";" | Where-Object { $_ }
+    }
+    $alreadyInPath = $pathEntries -contains $installDir
+
+    if ($AddToPath -or (-not $alreadyInPath)) {
         Add-ToPath $installDir
         Write-Host ""
     } else {
-        Print-Info "User PATH was not modified. To opt in, rerun with -AddToPath or add this manually: $installDir"
+        Print-Info "$installDir is already in PATH"
         Write-Host ""
     }
 

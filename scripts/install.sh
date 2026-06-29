@@ -6,7 +6,7 @@ set -e
 # Global flags
 QUIET_MODE=false
 SPECIFIC_VERSION=""
-ADD_TO_PATH=false
+ADD_TO_PATH=auto
 INIT_AFTER_INSTALL=false
 
 # Parse command line arguments
@@ -23,6 +23,10 @@ parse_arguments() {
                 ;;
             --add-to-path)
                 ADD_TO_PATH=true
+                shift
+                ;;
+            --no-add-to-path)
+                ADD_TO_PATH=false
                 shift
                 ;;
             --init)
@@ -51,7 +55,8 @@ show_help() {
     echo "Options:"
     echo "  --quiet, -q         Run in quiet mode (minimal output)"
     echo "  --version, -v VER   Install specific version (e.g., v1.0.0)"
-    echo "  --add-to-path       Add the install directory to your shell config"
+    echo "  --add-to-path       Add the install directory to your shell config (default: auto)"
+    echo "  --no-add-to-path    Do not modify shell config for PATH"
     echo "  --init              Run 'gcm init' after install (mutates shell/git config)"
     echo "  --help, -h          Show this help message"
     echo
@@ -505,17 +510,27 @@ download_binary() {
     print_success "Installed verified gcm binary to ${install_dir}/${binary_name}"
 }
 
-# Add to PATH only when explicitly requested.
+# Add to PATH when explicitly requested or when install dir is not already in PATH.
 add_to_path_if_requested() {
     local install_dir="$1"
 
-    if [[ "$ADD_TO_PATH" != "true" ]]; then
-        print_info "Shell PATH was not modified. To opt in, rerun with --add-to-path or add this manually:"
+    if [[ "$ADD_TO_PATH" == "false" ]]; then
+        print_info "Shell PATH was not modified (--no-add-to-path). Add this manually if needed:"
         echo "  export PATH=\"${install_dir}:\$PATH\""
         return
     fi
 
-    print_step "Configuring shell PATH..."
+    # In auto mode, only add if the directory is not already in PATH
+    if [[ "$ADD_TO_PATH" == "auto" ]]; then
+        if echo "$PATH" | tr ':' '\n' | grep -qx "$install_dir"; then
+            print_info "$install_dir is already in PATH"
+            return
+        fi
+        print_step "Adding $install_dir to PATH (not found in current PATH)..."
+    else
+        print_step "Configuring shell PATH..."
+    fi
+
     configure_path_manually "$install_dir"
 }
 
