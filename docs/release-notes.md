@@ -12,6 +12,45 @@ GCM follows [Semantic Versioning](versioning.md). Version numbers are `MAJOR.MIN
 
 ## Latest Release
 
+### v1.1.0
+
+**Release Date:** July 01, 2026
+
+#### Highlights
+
+- **Self-update command** — `gcm update` checks GitHub Releases for a newer version, downloads the platform binary, verifies SHA-256 checksum, and replaces the running binary with safe backup/rollback; supports `--check` (dry run), `--force` (reinstall), and `--prerelease` flags
+- **Key cleanup commands** — `gcm ssh clean` and `gcm gpg clean` remove GCM-generated keys that are no longer referenced by any profile; only keys GCM itself generated (tracked in a `~/.gcm/generated-keys.json` ledger) are eligible, so pre-existing and adopted keys are always left untouched
+
+#### Behavior Changes
+
+- **Installer runs `gcm init` by default** — `install.sh`, `install.ps1`, and `install.bat` now install shell integration (auto-switch on `cd` and the prompt profile indicator) automatically, so the `(profile)` prompt indicator works right after install with no manual step. Pass `--no-init` (`-NoInit` on PowerShell) to skip shell/git config changes. The previous opt-in `--init` flag is kept as a no-op for backward compatibility.
+
+#### Bug Fixes
+
+- **Installer PATH setup** — `install.sh` and `install.ps1` now automatically add the install directory to `PATH` when it isn't already present, fixing `command not found` on fresh installs
+- **Test isolation leak** — `TestNonInteractiveCommandRunPaths` no longer overwrites the real repo's `.git/config` with test data when a `.git/gcm-session` marker exists; the test now runs inside an isolated temp git repo
+
+#### New Commands
+
+| Command | Description |
+|---------|-------------|
+| `gcm update` | Self-update to latest GitHub Release |
+| `gcm update --check` | Check for updates without installing |
+| `gcm update --force` | Reinstall current version |
+| `gcm update --prerelease` | Include pre-release versions |
+| `gcm ssh clean` | Remove unused GCM-generated SSH keys |
+| `gcm gpg clean` | Remove unused GCM-generated GPG keys |
+
+#### Upgrade
+
+```bash
+gcm update
+```
+
+Or download from [GitHub Releases](https://github.com/justjundana/git-config-manager/releases/tag/v1.1.0).
+
+---
+
 ### v1.0.0
 
 **Release Date:** June 01, 2026

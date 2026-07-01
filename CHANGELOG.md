@@ -4,6 +4,19 @@ All notable changes to GCM will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-07-01
+
+### Added
+- **`gcm ssh clean` / `gcm gpg clean`** — remove GCM-generated SSH/GPG keys that are no longer referenced by any profile; only keys GCM itself generated (tracked in a `~/.gcm/generated-keys.json` ledger) are eligible, so pre-existing and adopted keys are always left untouched; supports `--dry-run` (preview) and `--yes` (skip confirmation)
+- **Self-update command** — `gcm update` checks GitHub Releases for a newer version, downloads the platform binary, verifies SHA-256 checksum, and replaces the running binary with safe backup/rollback; supports `--check` (dry run), `--force` (reinstall), and `--prerelease` flags
+
+### Changed
+- **Installer runs `gcm init` by default** — `install.sh`, `install.ps1`, and `install.bat` now set up shell integration (auto-switch on `cd` and the prompt profile indicator) automatically after install, so the active-profile prompt works without a manual step; pass `--no-init` (`-NoInit` on PowerShell) to skip any shell/git config changes. A failed `gcm init` is now a warning instead of aborting the install, since the binary itself is already in place. The previous opt-in `--init` flag is kept as a no-op for backward compatibility.
+
+### Fixed
+- **Installer PATH setup** — `install.sh` and `install.ps1` now automatically add the install directory to `PATH` when it isn't already present, fixing `command not found` on fresh installs where the binary landed in `~/.local/bin` but `PATH` was only updated when `--add-to-path` was explicitly passed
+- **Test isolation leak** — `TestNonInteractiveCommandRunPaths` no longer overwrites the real repo's `.git/config` with test data (`Janet Doe` / `ABC123`) when a `.git/gcm-session` marker exists; the test now runs inside an isolated temp git repo
+
 ## [1.0.0] - 2026-05-01
 
 ### Added
