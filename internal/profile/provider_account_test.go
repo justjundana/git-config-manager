@@ -3,19 +3,19 @@ package profile
 import (
 	"testing"
 
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 func TestSetProviderAccountEnforcesSingleProviderAndLegacyGitHubSync(t *testing.T) {
 	p := &Profile{
 		GitHub: &GitHubConfig{Username: "old-gh", TokenPath: "legacy-token"},
 		Providers: map[string]ProviderAccountConfig{
-			string(providerpkg.GitHubID): {Username: "old-gh", TokenPath: "provider-token"},
-			string(providerpkg.GitLabID): {Username: "old-gl"},
+			string(_provider.GitHubID): {Username: "old-gh", TokenPath: "provider-token"},
+			string(_provider.GitLabID): {Username: "old-gl"},
 		},
 	}
 
-	SetProviderAccount(p, providerpkg.GitLabID, "new-gl", providerpkg.AuthMethodPAT)
+	SetProviderAccount(p, _provider.GitLabID, "new-gl", _provider.AuthMethodPAT)
 
 	if HasMultipleProviders(p) {
 		t.Fatal("profile should have exactly one provider after SetProviderAccount")
@@ -23,24 +23,24 @@ func TestSetProviderAccountEnforcesSingleProviderAndLegacyGitHubSync(t *testing.
 	if p.GitHub != nil {
 		t.Fatal("legacy GitHub block should be cleared when switching to GitLab")
 	}
-	if got, ok := ProviderID(p); !ok || got != providerpkg.GitLabID {
+	if got, ok := ProviderID(p); !ok || got != _provider.GitLabID {
 		t.Fatalf("ProviderID = %q, %v; want gitlab, true", got, ok)
 	}
-	account := ProviderAccount(p, providerpkg.GitLabID)
-	if account.Username != "new-gl" || account.AuthMethod != providerpkg.AuthMethodPAT {
+	account := ProviderAccount(p, _provider.GitLabID)
+	if account.Username != "new-gl" || account.AuthMethod != _provider.AuthMethodPAT {
 		t.Fatalf("GitLab account = %+v", account)
 	}
 }
 
 func TestSetProviderAccountNilAndGitHubCreation(t *testing.T) {
-	SetProviderAccount(nil, providerpkg.GitHubID, "ignored", providerpkg.AuthMethodPAT)
+	SetProviderAccount(nil, _provider.GitHubID, "ignored", _provider.AuthMethodPAT)
 
 	p := &Profile{}
-	SetProviderAccount(p, providerpkg.GitHubID, "octo", providerpkg.AuthMethodPAT)
+	SetProviderAccount(p, _provider.GitHubID, "octo", _provider.AuthMethodPAT)
 	if p.GitHub == nil || p.GitHub.Username != "octo" {
 		t.Fatalf("GitHub config = %+v", p.GitHub)
 	}
-	if got, ok := ProviderID(p); !ok || got != providerpkg.GitHubID {
+	if got, ok := ProviderID(p); !ok || got != _provider.GitHubID {
 		t.Fatalf("ProviderID = %q, %v; want github, true", got, ok)
 	}
 }
@@ -48,7 +48,7 @@ func TestSetProviderAccountNilAndGitHubCreation(t *testing.T) {
 func TestSetProviderAccountPreservesSameProviderMetadata(t *testing.T) {
 	uploadKeys := true
 	p := &Profile{Providers: map[string]ProviderAccountConfig{
-		string(providerpkg.GitLabID): {
+		string(_provider.GitLabID): {
 			Username:   "old-gl",
 			Account:    "self-managed",
 			TokenPath:  "tokens/work/gitlab",
@@ -56,9 +56,9 @@ func TestSetProviderAccountPreservesSameProviderMetadata(t *testing.T) {
 		},
 	}}
 
-	SetProviderAccount(p, providerpkg.GitLabID, "new-gl", providerpkg.AuthMethodPAT)
+	SetProviderAccount(p, _provider.GitLabID, "new-gl", _provider.AuthMethodPAT)
 
-	account := ProviderAccount(p, providerpkg.GitLabID)
+	account := ProviderAccount(p, _provider.GitLabID)
 	if account.Username != "new-gl" {
 		t.Fatalf("Username = %q, want updated username", account.Username)
 	}
@@ -71,9 +71,9 @@ func TestProviderAccountFallsBackToLegacyGitHubBlock(t *testing.T) {
 	uploadKeys := false
 	p := &Profile{GitHub: &GitHubConfig{Username: "octo", TokenPath: "legacy", UploadKeys: &uploadKeys}}
 
-	account := ProviderAccount(p, providerpkg.GitHubID)
+	account := ProviderAccount(p, _provider.GitHubID)
 
-	if account.Username != "octo" || account.TokenPath != "legacy" || account.AuthMethod != providerpkg.AuthMethodLegacy {
+	if account.Username != "octo" || account.TokenPath != "legacy" || account.AuthMethod != _provider.AuthMethodLegacy {
 		t.Fatalf("legacy account = %+v", account)
 	}
 	if account.UploadKeys != &uploadKeys {
@@ -82,10 +82,10 @@ func TestProviderAccountFallsBackToLegacyGitHubBlock(t *testing.T) {
 }
 
 func TestProviderAccountEmptyBranches(t *testing.T) {
-	if got := ProviderAccount(nil, providerpkg.GitHubID); got != (ProviderAccountConfig{}) {
+	if got := ProviderAccount(nil, _provider.GitHubID); got != (ProviderAccountConfig{}) {
 		t.Fatalf("ProviderAccount(nil) = %+v", got)
 	}
-	if got := ProviderAccount(&Profile{}, providerpkg.GitLabID); got != (ProviderAccountConfig{}) {
+	if got := ProviderAccount(&Profile{}, _provider.GitLabID); got != (ProviderAccountConfig{}) {
 		t.Fatalf("ProviderAccount(empty) = %+v", got)
 	}
 }
@@ -99,15 +99,15 @@ func TestHasMultipleProvidersDetectsMixedLegacyAndProviderState(t *testing.T) {
 		{
 			name: "two provider map entries",
 			p: &Profile{Providers: map[string]ProviderAccountConfig{
-				string(providerpkg.GitHubID): {},
-				string(providerpkg.GitLabID): {},
+				string(_provider.GitHubID): {},
+				string(_provider.GitLabID): {},
 			}},
 			want: true,
 		},
 		{
 			name: "gitlab provider plus legacy github",
 			p: &Profile{
-				Providers: map[string]ProviderAccountConfig{string(providerpkg.GitLabID): {}},
+				Providers: map[string]ProviderAccountConfig{string(_provider.GitLabID): {}},
 				GitHub:    &GitHubConfig{Username: "octo"},
 			},
 			want: true,
@@ -115,7 +115,7 @@ func TestHasMultipleProvidersDetectsMixedLegacyAndProviderState(t *testing.T) {
 		{
 			name: "github provider plus legacy github compatibility",
 			p: &Profile{
-				Providers: map[string]ProviderAccountConfig{string(providerpkg.GitHubID): {}},
+				Providers: map[string]ProviderAccountConfig{string(_provider.GitHubID): {}},
 				GitHub:    &GitHubConfig{Username: "octo"},
 			},
 			want: false,
@@ -135,7 +135,7 @@ func TestClearProviderAccounts(t *testing.T) {
 	ClearProviderAccounts(nil)
 
 	p := &Profile{
-		Providers: map[string]ProviderAccountConfig{string(providerpkg.GitLabID): {Username: "gl"}},
+		Providers: map[string]ProviderAccountConfig{string(_provider.GitLabID): {Username: "gl"}},
 		GitHub:    &GitHubConfig{Username: "gh"},
 	}
 
@@ -147,29 +147,29 @@ func TestClearProviderAccounts(t *testing.T) {
 }
 
 func TestClearProviderAccountRemovesOnlyRequestedProvider(t *testing.T) {
-	ClearProviderAccount(nil, providerpkg.GitHubID)
+	ClearProviderAccount(nil, _provider.GitHubID)
 
 	p := &Profile{Providers: map[string]ProviderAccountConfig{
-		string(providerpkg.GitHubID): {Username: "gh"},
-		string(providerpkg.GitLabID): {Username: "gl"},
+		string(_provider.GitHubID): {Username: "gh"},
+		string(_provider.GitLabID): {Username: "gl"},
 	}}
 
-	ClearProviderAccount(p, providerpkg.GitLabID)
+	ClearProviderAccount(p, _provider.GitLabID)
 
-	if _, ok := p.Providers[string(providerpkg.GitLabID)]; ok {
+	if _, ok := p.Providers[string(_provider.GitLabID)]; ok {
 		t.Fatal("GitLab provider should be removed")
 	}
-	if got := p.Providers[string(providerpkg.GitHubID)].Username; got != "gh" {
+	if got := p.Providers[string(_provider.GitHubID)].Username; got != "gh" {
 		t.Fatalf("GitHub provider = %q, want preserved", got)
 	}
 
-	ClearProviderAccount(p, providerpkg.GitHubID)
+	ClearProviderAccount(p, _provider.GitHubID)
 	if p.Providers != nil {
 		t.Fatalf("providers map = %v, want nil after last provider removal", p.Providers)
 	}
 
 	p = &Profile{GitHub: &GitHubConfig{Username: "gh"}}
-	ClearProviderAccount(p, providerpkg.GitHubID)
+	ClearProviderAccount(p, _provider.GitHubID)
 	if p.GitHub != nil {
 		t.Fatalf("legacy GitHub config should be cleared: %+v", p.GitHub)
 	}
@@ -189,21 +189,21 @@ func TestProviderIDAndUsesProviderEdgeCases(t *testing.T) {
 		t.Fatal("empty profile should not have multiple providers")
 	}
 
-	p := &Profile{Providers: map[string]ProviderAccountConfig{string(providerpkg.GitLabID): {Username: "gl"}}}
-	if !UsesProvider(p, providerpkg.GitLabID) {
+	p := &Profile{Providers: map[string]ProviderAccountConfig{string(_provider.GitLabID): {Username: "gl"}}}
+	if !UsesProvider(p, _provider.GitLabID) {
 		t.Fatal("profile should use GitLab")
 	}
-	if UsesProvider(p, providerpkg.GitHubID) {
+	if UsesProvider(p, _provider.GitHubID) {
 		t.Fatal("profile should not use GitHub")
 	}
 
-	p.Providers[string(providerpkg.GitHubID)] = ProviderAccountConfig{Username: "gh"}
+	p.Providers[string(_provider.GitHubID)] = ProviderAccountConfig{Username: "gh"}
 	if id, ok := ProviderID(p); ok || id != "" {
 		t.Fatalf("ProviderID(multiple) = %q, %v; want empty, false", id, ok)
 	}
 
 	legacy := &Profile{GitHub: &GitHubConfig{Username: "octo"}}
-	if id, ok := ProviderID(legacy); !ok || id != providerpkg.GitHubID {
+	if id, ok := ProviderID(legacy); !ok || id != _provider.GitHubID {
 		t.Fatalf("ProviderID(legacy) = %q, %v; want github, true", id, ok)
 	}
 }

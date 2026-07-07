@@ -8,19 +8,19 @@ import (
 	"strings"
 	"testing"
 
-	authsvc "github.com/justjundana/git-config-manager/internal/auth"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/providerclient"
+	_auth "github.com/justjundana/git-config-manager/internal/auth"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_providerclient "github.com/justjundana/git-config-manager/internal/providerclient"
 )
 
-type cliAuthFakeVerifier map[string]providerclient.AuthenticatedUser
+type cliAuthFakeVerifier map[string]_providerclient.AuthenticatedUser
 
-func (f cliAuthFakeVerifier) VerifyPAT(_ context.Context, _ providerpkg.Definition, token string) (providerclient.AuthenticatedUser, error) {
+func (f cliAuthFakeVerifier) VerifyPAT(_ context.Context, _ _provider.Definition, token string) (_providerclient.AuthenticatedUser, error) {
 	if user, ok := f[token]; ok {
 		return user, nil
 	}
-	return providerclient.AuthenticatedUser{}, fmt.Errorf("invalid token")
+	return _providerclient.AuthenticatedUser{}, fmt.Errorf("invalid token")
 }
 
 type cliAuthFakeInspector struct {
@@ -28,29 +28,29 @@ type cliAuthFakeInspector struct {
 	rejected   bool
 }
 
-type GitCredentialInspection = authsvc.GitCredentialInspection
+type GitCredentialInspection = _auth.GitCredentialInspection
 
-func (f *cliAuthFakeInspector) InspectGitCredential(context.Context, providerpkg.Definition, string) (authsvc.GitCredentialInspection, error) {
+func (f *cliAuthFakeInspector) InspectGitCredential(context.Context, _provider.Definition, string) (_auth.GitCredentialInspection, error) {
 	return f.inspection, nil
 }
 
-func (f *cliAuthFakeInspector) RejectGitCredential(context.Context, providerpkg.Definition, string) error {
+func (f *cliAuthFakeInspector) RejectGitCredential(context.Context, _provider.Definition, string) error {
 	f.rejected = true
 	return nil
 }
 
-func withAuthManagerFactory(t *testing.T, manager *authsvc.Manager) {
+func withAuthManagerFactory(t *testing.T, manager *_auth.Manager) {
 	t.Helper()
 	original := authManagerFactory
-	authManagerFactory = func() *authsvc.Manager { return manager }
+	authManagerFactory = func() *_auth.Manager { return manager }
 	t.Cleanup(func() { authManagerFactory = original })
 }
 
-func createAuthTestProfile(t *testing.T, name string, providerID providerpkg.ProviderID, username string) *profile.Profile {
+func createAuthTestProfile(t *testing.T, name string, providerID _provider.ProviderID, username string) *_profile.Profile {
 	t.Helper()
 	p := repairTestProfile(name)
 	if providerID != "" {
-		p.Providers = map[string]profile.ProviderAccountConfig{string(providerID): {Username: username}}
+		p.Providers = map[string]_profile.ProviderAccountConfig{string(providerID): {Username: username}}
 	}
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
@@ -69,15 +69,15 @@ func TestAuthCommandRegistration(t *testing.T) {
 
 func TestRunAuthStatusUsesSourceAwareResolver(t *testing.T) {
 	c := withRepairTestContainer(t)
-	p := createAuthTestProfile(t, "work", providerpkg.GitHubID, "octo")
-	def, ok := c.ProviderRegistry.Get(providerpkg.GitHubID)
+	p := createAuthTestProfile(t, "work", _provider.GitHubID, "octo")
+	def, ok := c.ProviderRegistry.Get(_provider.GitHubID)
 	if !ok {
 		t.Fatal("github provider missing")
 	}
-	if err := saveProviderToken("work", def, p, providerpkg.TokenSet{AccessToken: "gcm-token", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	if err := saveProviderToken("work", def, p, _provider.TokenSet{AccessToken: "gcm-token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{"gcm-token": {Username: "octo"}})
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{"gcm-token": {Username: "octo"}})
 	manager.ExternalInspector = &cliAuthFakeInspector{}
 	withAuthManagerFactory(t, manager)
 
@@ -93,8 +93,8 @@ func TestRunAuthStatusUsesSourceAwareResolver(t *testing.T) {
 
 func TestRunAuthStatusUnauthenticatedHidesUsername(t *testing.T) {
 	c := withRepairTestContainer(t)
-	createAuthTestProfile(t, "logged-out", providerpkg.GitHubID, "octo")
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{})
+	createAuthTestProfile(t, "logged-out", _provider.GitHubID, "octo")
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{})
 	manager.ExternalInspector = &cliAuthFakeInspector{}
 	withAuthManagerFactory(t, manager)
 
@@ -114,9 +114,9 @@ func TestRunAuthStatusUnauthenticatedHidesUsername(t *testing.T) {
 func TestRunAuthAdoptDryRunDoesNotMutateProfile(t *testing.T) {
 	c := withRepairTestContainer(t)
 	createAuthTestProfile(t, "work", "", "")
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{"external-token": {Username: "octo"}})
-	manager.ExternalInspector = &cliAuthFakeInspector{inspection: authsvc.GitCredentialInspection{Credential: authsvc.CredentialStatus{
-		Type: "https", Source: authsvc.SourceOSXKeychain, Ownership: authsvc.OwnershipExternal, State: authsvc.StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{"external-token": {Username: "octo"}})
+	manager.ExternalInspector = &cliAuthFakeInspector{inspection: _auth.GitCredentialInspection{Credential: _auth.CredentialStatus{
+		Type: "https", Source: _auth.SourceOSXKeychain, Ownership: _auth.OwnershipExternal, State: _auth.StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
 	}}}
 	withAuthManagerFactory(t, manager)
 
@@ -129,7 +129,7 @@ func TestRunAuthAdoptDryRunDoesNotMutateProfile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get profile: %v", err)
 	}
-	if profile.UsesProvider(updated, providerpkg.GitHubID) {
+	if _profile.UsesProvider(updated, _provider.GitHubID) {
 		t.Fatal("dry-run adopt should not set provider")
 	}
 	if !strings.Contains(output, "Auth Adopt Dry Run") {
@@ -139,11 +139,11 @@ func TestRunAuthAdoptDryRunDoesNotMutateProfile(t *testing.T) {
 
 func TestRunAuthLogoutDryRunDoesNotRejectExternalCredential(t *testing.T) {
 	c := withRepairTestContainer(t)
-	createAuthTestProfile(t, "work", providerpkg.GitHubID, "octo")
-	inspector := &cliAuthFakeInspector{inspection: authsvc.GitCredentialInspection{Credential: authsvc.CredentialStatus{
-		Type: "https", Source: authsvc.SourceOSXKeychain, Ownership: authsvc.OwnershipExternal, State: authsvc.StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
+	createAuthTestProfile(t, "work", _provider.GitHubID, "octo")
+	inspector := &cliAuthFakeInspector{inspection: _auth.GitCredentialInspection{Credential: _auth.CredentialStatus{
+		Type: "https", Source: _auth.SourceOSXKeychain, Ownership: _auth.OwnershipExternal, State: _auth.StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
 	}}}
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{"external-token": {Username: "octo"}})
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{"external-token": {Username: "octo"}})
 	manager.ExternalInspector = inspector
 	withAuthManagerFactory(t, manager)
 
@@ -162,11 +162,11 @@ func TestRunAuthLogoutDryRunDoesNotRejectExternalCredential(t *testing.T) {
 
 func TestRunAuthLogoutIgnoresGCMHelperCredentialAsExternal(t *testing.T) {
 	c := withRepairTestContainer(t)
-	createAuthTestProfile(t, "work", providerpkg.GitHubID, "octo")
-	inspector := &cliAuthFakeInspector{inspection: authsvc.GitCredentialInspection{Credential: authsvc.CredentialStatus{
-		Type: "https", Source: authsvc.SourceGCMStore, Ownership: authsvc.OwnershipGCM, State: authsvc.StateAuthenticatedGCM, Present: true, Secret: "active-profile-token", Username: "other",
+	createAuthTestProfile(t, "work", _provider.GitHubID, "octo")
+	inspector := &cliAuthFakeInspector{inspection: _auth.GitCredentialInspection{Credential: _auth.CredentialStatus{
+		Type: "https", Source: _auth.SourceGCMStore, Ownership: _auth.OwnershipGCM, State: _auth.StateAuthenticatedGCM, Present: true, Secret: "active-profile-token", Username: "other",
 	}}}
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{})
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{})
 	manager.ExternalInspector = inspector
 	withAuthManagerFactory(t, manager)
 
@@ -186,8 +186,8 @@ func TestRunAuthLogoutIgnoresGCMHelperCredentialAsExternal(t *testing.T) {
 func TestRunAuthLogoutScopeAllReportsMissingGCMToken(t *testing.T) {
 	c := withRepairTestContainer(t)
 	profileName := "absent-auth-token"
-	createAuthTestProfile(t, profileName, providerpkg.GitHubID, "octo")
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{})
+	createAuthTestProfile(t, profileName, _provider.GitHubID, "octo")
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{})
 	manager.ExternalInspector = &cliAuthFakeInspector{}
 	withAuthManagerFactory(t, manager)
 
@@ -206,22 +206,22 @@ func TestRunAuthLogoutActiveProfileClearsCredentialsAndRejects(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", gitConfig)
 	c := withRepairTestContainer(t)
 	profileName := "active-logout"
-	p := createAuthTestProfile(t, profileName, providerpkg.GitHubID, "octo")
-	if err := c.ProfileSwitcher.Activate(profileName, profile.ScopeGlobal); err != nil {
+	p := createAuthTestProfile(t, profileName, _provider.GitHubID, "octo")
+	if err := c.ProfileSwitcher.Activate(profileName, _profile.ScopeGlobal); err != nil {
 		t.Fatalf("activate profile: %v", err)
 	}
-	def, ok := c.ProviderRegistry.Get(providerpkg.GitHubID)
+	def, ok := c.ProviderRegistry.Get(_provider.GitHubID)
 	if !ok {
 		t.Fatal("github provider missing")
 	}
-	if err := saveProviderToken(profileName, def, p, providerpkg.TokenSet{AccessToken: "token", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	if err := saveProviderToken(profileName, def, p, _provider.TokenSet{AccessToken: "token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
 	if err := c.GitHubClient.SetGitCredentialUsername(def.CredentialServer(), "octo"); err != nil {
 		t.Fatalf("set credential username: %v", err)
 	}
 	inspector := &cliAuthFakeInspector{}
-	manager := authsvc.NewManager(c.TokenStore, cliAuthFakeVerifier{"token": {Username: "octo"}})
+	manager := _auth.NewManager(c.TokenStore, cliAuthFakeVerifier{"token": {Username: "octo"}})
 	manager.ExternalInspector = inspector
 	withAuthManagerFactory(t, manager)
 
@@ -244,7 +244,7 @@ func TestRunAuthLogoutActiveProfileClearsCredentialsAndRejects(t *testing.T) {
 func TestGitHubLogoutReportsMissingToken(t *testing.T) {
 	withRepairTestContainer(t)
 	profileName := "absent-github-token"
-	createAuthTestProfile(t, profileName, providerpkg.GitHubID, "octo")
+	createAuthTestProfile(t, profileName, _provider.GitHubID, "octo")
 
 	output := captureStdout(t, func() {
 		if err := runRootCommand(t, "github", "logout", profileName, "--force", "--clear-credentials=false"); err != nil {
@@ -264,15 +264,15 @@ func TestGitHubLogoutClearsCredentialUsernamePin(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", gitConfig)
 	c := withRepairTestContainer(t)
 	profileName := "logout-pin"
-	p := createAuthTestProfile(t, profileName, providerpkg.GitHubID, "octo")
-	if err := c.ProfileSwitcher.Activate(profileName, profile.ScopeGlobal); err != nil {
+	p := createAuthTestProfile(t, profileName, _provider.GitHubID, "octo")
+	if err := c.ProfileSwitcher.Activate(profileName, _profile.ScopeGlobal); err != nil {
 		t.Fatalf("activate profile: %v", err)
 	}
-	def, ok := c.ProviderRegistry.Get(providerpkg.GitHubID)
+	def, ok := c.ProviderRegistry.Get(_provider.GitHubID)
 	if !ok {
 		t.Fatal("github provider missing")
 	}
-	if err := saveProviderToken(profileName, def, p, providerpkg.TokenSet{AccessToken: "token", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	if err := saveProviderToken(profileName, def, p, _provider.TokenSet{AccessToken: "token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
 	if err := c.GitHubClient.SetGitCredentialUsername(def.CredentialServer(), "octo"); err != nil {
@@ -293,11 +293,11 @@ func TestGitHubLogoutClearsCredentialUsernamePin(t *testing.T) {
 }
 
 func TestBuildAuthDoctorReportSkipsProviderlessProfiles(t *testing.T) {
-	report := buildAuthDoctorReport([]authsvc.ProfileAuthStatus{
+	report := buildAuthDoctorReport([]_auth.ProfileAuthStatus{
 		{
 			Profile: "local-only",
-			State:   authsvc.StateUnauthenticated,
-			Findings: []authsvc.Finding{{
+			State:   _auth.StateUnauthenticated,
+			Findings: []_auth.Finding{{
 				Code:     "profile_provider_unresolved",
 				Severity: "warning",
 				Message:  "no provider",
@@ -305,9 +305,9 @@ func TestBuildAuthDoctorReportSkipsProviderlessProfiles(t *testing.T) {
 		},
 		{
 			Profile:  "work",
-			Provider: providerpkg.GitHubID,
-			State:    authsvc.StateUnauthenticated,
-			Findings: []authsvc.Finding{{
+			Provider: _provider.GitHubID,
+			State:    _auth.StateUnauthenticated,
+			Findings: []_auth.Finding{{
 				Code:     "not_authenticated",
 				Severity: "warning",
 				Message:  "No GCM-managed or external HTTPS credential was found",
@@ -321,10 +321,10 @@ func TestBuildAuthDoctorReportSkipsProviderlessProfiles(t *testing.T) {
 }
 
 func TestGitCredentialDetailLabel(t *testing.T) {
-	if got := gitCredentialDetailLabel(authsvc.CredentialStatus{Source: authsvc.SourceGCMStore}); got != "Git via GCM Helper" {
+	if got := gitCredentialDetailLabel(_auth.CredentialStatus{Source: _auth.SourceGCMStore}); got != "Git via GCM Helper" {
 		t.Fatalf("GCM label = %q", got)
 	}
-	if got := gitCredentialDetailLabel(authsvc.CredentialStatus{Source: authsvc.SourceOSXKeychain}); got != "External Git" {
+	if got := gitCredentialDetailLabel(_auth.CredentialStatus{Source: _auth.SourceOSXKeychain}); got != "External Git" {
 		t.Fatalf("external label = %q", got)
 	}
 }

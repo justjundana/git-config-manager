@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
+	_config "github.com/justjundana/git-config-manager/internal/config"
 )
 
 // marshalFn is used by write to serialize entries. Tests may override it.
@@ -53,10 +53,10 @@ type Logger struct {
 }
 
 // NewLogger creates an audit logger.
-func NewLogger(cfg *config.Config) *Logger {
+func NewLogger(cfg *_config.Config) *Logger {
 	return &Logger{
 		enabled: cfg.Security.AuditLog,
-		logDir:  filepath.Join(config.GCMDir(), "logs"),
+		logDir:  filepath.Join(_config.GCMDir(), "logs"),
 	}
 }
 
@@ -110,7 +110,7 @@ func ReadLog(date string) ([]Entry, error) {
 	if strings.ContainsAny(date, `/\.`) {
 		return nil, fmt.Errorf("invalid date %q", date)
 	}
-	logFile := filepath.Join(config.GCMDir(), "logs", date+".jsonl")
+	logFile := filepath.Join(_config.GCMDir(), "logs", date+".jsonl")
 	data, err := os.ReadFile(logFile)
 	if err != nil {
 		return nil, err

@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/container"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_container "github.com/justjundana/git-config-manager/internal/container"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 func TestQuickVerifyProviderTokenUsesProviderAuthHeaders(t *testing.T) {
@@ -24,8 +24,8 @@ func TestQuickVerifyProviderTokenUsesProviderAuthHeaders(t *testing.T) {
 		defer server.Close()
 
 		err := quickVerifyProviderToken(
-			providerpkg.Definition{ID: providerpkg.GitHubID, APIURL: server.URL},
-			providerpkg.TokenSet{AccessToken: "gh-token", AuthMethod: providerpkg.AuthMethodPAT},
+			_provider.Definition{ID: _provider.GitHubID, APIURL: server.URL},
+			_provider.TokenSet{AccessToken: "gh-token", AuthMethod: _provider.AuthMethodPAT},
 		)
 		if err != nil {
 			t.Fatalf("quickVerifyProviderToken GitHub: %v", err)
@@ -45,8 +45,8 @@ func TestQuickVerifyProviderTokenUsesProviderAuthHeaders(t *testing.T) {
 		defer server.Close()
 
 		err := quickVerifyProviderToken(
-			providerpkg.Definition{ID: providerpkg.GitLabID, APIURL: server.URL},
-			providerpkg.TokenSet{AccessToken: "gl-token", AuthMethod: providerpkg.AuthMethodPAT},
+			_provider.Definition{ID: _provider.GitLabID, APIURL: server.URL},
+			_provider.TokenSet{AccessToken: "gl-token", AuthMethod: _provider.AuthMethodPAT},
 		)
 		if err != nil {
 			t.Fatalf("quickVerifyProviderToken GitLab PAT: %v", err)
@@ -66,8 +66,8 @@ func TestQuickVerifyProviderTokenUsesProviderAuthHeaders(t *testing.T) {
 		defer server.Close()
 
 		err := quickVerifyProviderToken(
-			providerpkg.Definition{ID: providerpkg.GitLabID, APIURL: server.URL},
-			providerpkg.TokenSet{AccessToken: "gl-bearer", AuthMethod: providerpkg.AuthMethodOAuthDevice},
+			_provider.Definition{ID: _provider.GitLabID, APIURL: server.URL},
+			_provider.TokenSet{AccessToken: "gl-bearer", AuthMethod: _provider.AuthMethodOAuthDevice},
 		)
 		if err != nil {
 			t.Fatalf("quickVerifyProviderToken GitLab bearer: %v", err)
@@ -82,8 +82,8 @@ func TestQuickVerifyProviderTokenReportsInvalidHTTPStatus(t *testing.T) {
 	defer server.Close()
 
 	err := quickVerifyProviderToken(
-		providerpkg.Definition{ID: providerpkg.GitHubID, APIURL: server.URL},
-		providerpkg.TokenSet{AccessToken: "bad-token", AuthMethod: providerpkg.AuthMethodPAT},
+		_provider.Definition{ID: _provider.GitHubID, APIURL: server.URL},
+		_provider.TokenSet{AccessToken: "bad-token", AuthMethod: _provider.AuthMethodPAT},
 	)
 	if err == nil {
 		t.Fatal("expected invalid status error")
@@ -99,12 +99,12 @@ func TestStatusVerifyConcurrencyFollowsConfig(t *testing.T) {
 		t.Fatalf("statusVerifyConcurrency without container = %d, want 1", got)
 	}
 
-	ctr = &container.Container{Config: &config.Config{Advanced: config.AdvancedConfig{ParallelOperations: false}}}
+	ctr = &_container.Container{Config: &_config.Config{Advanced: _config.AdvancedConfig{ParallelOperations: false}}}
 	if got := statusVerifyConcurrency(); got != 1 {
 		t.Fatalf("statusVerifyConcurrency disabled = %d, want 1", got)
 	}
 
-	ctr = &container.Container{Config: &config.Config{Advanced: config.AdvancedConfig{ParallelOperations: true}}}
+	ctr = &_container.Container{Config: &_config.Config{Advanced: _config.AdvancedConfig{ParallelOperations: true}}}
 	if got := statusVerifyConcurrency(); got != 4 {
 		t.Fatalf("statusVerifyConcurrency enabled = %d, want 4", got)
 	}

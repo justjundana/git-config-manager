@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 type repairOptions struct {
@@ -80,8 +80,8 @@ func runRepair(opts repairOptions) error {
 
 	if !opts.yes {
 		printRepairReport(plan)
-		ui.Blank()
-		ok, askErr := ui.AskConfirm(fmt.Sprintf("Apply %d safe repair action(s)?", plan.FixableCount), false)
+		_ui.Blank()
+		ok, askErr := _ui.AskConfirm(fmt.Sprintf("Apply %d safe repair action(s)?", plan.FixableCount), false)
 		if askErr != nil || !ok {
 			return askErr
 		}
@@ -126,8 +126,8 @@ func buildRepairReport(apply bool) (repairReport, error) {
 }
 
 func appendCredentialHelperIssues(_ *repairReport, appendIssue func(repairIssue), apply bool) {
-	defs := providerDefinitionsWithCapability(providerpkg.CapabilityCredentialHelper)
-	missing := make([]providerpkg.Definition, 0)
+	defs := providerDefinitionsWithCapability(_provider.CapabilityCredentialHelper)
+	missing := make([]_provider.Definition, 0)
 	for _, def := range defs {
 		server := def.CredentialServer()
 		if server != "" && !IsCredentialHelperConfiguredFor(server) {
@@ -166,7 +166,7 @@ func appendCredentialHelperIssues(_ *repairReport, appendIssue func(repairIssue)
 	}
 }
 
-func appendProfileRepairIssues(_ *repairReport, appendIssue func(repairIssue), p *profile.Profile, apply bool) {
+func appendProfileRepairIssues(_ *repairReport, appendIssue func(repairIssue), p *_profile.Profile, apply bool) {
 	if p == nil {
 		return
 	}
@@ -200,7 +200,7 @@ func appendProfileRepairIssues(_ *repairReport, appendIssue func(repairIssue), p
 		return
 	}
 
-	def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper)
+	def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper)
 	if !ok {
 		appendIssue(repairIssue{
 			Code:     "provider_missing",
@@ -233,16 +233,16 @@ func appendProfileRepairIssues(_ *repairReport, appendIssue func(repairIssue), p
 		appendIssue(issue)
 	}
 
-	if def.ID == providerpkg.GitHubID {
+	if def.ID == _provider.GitHubID {
 		appendLegacyGitHubTokenIssue(appendIssue, p, def, apply)
 	}
 }
 
-func repairStaleLegacyGitHubBlock(p *profile.Profile, apply bool) (bool, error) {
+func repairStaleLegacyGitHubBlock(p *_profile.Profile, apply bool) (bool, error) {
 	if p == nil || p.GitHub == nil || len(p.Providers) != 1 {
 		return false, nil
 	}
-	if _, hasGitHubProvider := p.Providers[string(providerpkg.GitHubID)]; hasGitHubProvider {
+	if _, hasGitHubProvider := p.Providers[string(_provider.GitHubID)]; hasGitHubProvider {
 		return false, nil
 	}
 	if !apply {
@@ -255,7 +255,7 @@ func repairStaleLegacyGitHubBlock(p *profile.Profile, apply bool) (bool, error) 
 	return true, nil
 }
 
-func appendLegacyGitHubTokenIssue(appendIssue func(repairIssue), p *profile.Profile, def providerpkg.Definition, apply bool) {
+func appendLegacyGitHubTokenIssue(appendIssue func(repairIssue), p *_profile.Profile, def _provider.Definition, apply bool) {
 	legacyToken, err := ctr.GitHubClient.LoadToken(p.Name)
 	if err != nil || legacyToken == "" {
 		return
@@ -271,9 +271,9 @@ func appendLegacyGitHubTokenIssue(appendIssue func(repairIssue), p *profile.Prof
 		Fixable:  true,
 	}
 	if apply {
-		token := providerpkg.TokenSet{
+		token := _provider.TokenSet{
 			AccessToken: legacyToken,
-			AuthMethod:  providerpkg.AuthMethodLegacy,
+			AuthMethod:  _provider.AuthMethodLegacy,
 			CreatedAt:   time.Now().UTC(),
 		}
 		if err := saveProviderToken(p.Name, def, p, token); err != nil {
@@ -298,35 +298,35 @@ func outputRepairReport(report repairReport, jsonOutput bool) error {
 }
 
 func printRepairReport(report repairReport) {
-	ui.Header("%s GCM Repair", ui.IconDoctor)
-	ui.Blank()
+	_ui.Header("%s GCM Repair", _ui.IconDoctor)
+	_ui.Blank()
 
 	if report.IssueCount == 0 {
-		ui.Success("No repair issues found")
+		_ui.Success("No repair issues found")
 		return
 	}
 
-	ui.Print("  %s %d issue(s), %d fixable, %d fixed, %d manual", ui.Bold("Summary"), report.IssueCount, report.FixableCount, report.FixedCount, report.ManualCount)
-	ui.Blank()
+	_ui.Print("  %s %d issue(s), %d fixable, %d fixed, %d manual", _ui.Bold("Summary"), report.IssueCount, report.FixableCount, report.FixedCount, report.ManualCount)
+	_ui.Blank()
 
 	for _, issue := range report.Issues {
-		icon := ui.Yellow(ui.IconWarning)
+		icon := _ui.Yellow(_ui.IconWarning)
 		if issue.Severity == "error" {
-			icon = ui.Red(ui.IconError)
+			icon = _ui.Red(_ui.IconError)
 		}
 		if issue.Fixed {
-			icon = ui.Green(ui.IconSuccess)
+			icon = _ui.Green(_ui.IconSuccess)
 		}
 
 		scope := issue.Code
 		if issue.Profile != "" {
 			scope = issue.Profile + ": " + scope
 		}
-		ui.Print("  %s %s", icon, ui.Bold(scope))
-		ui.Print("    %s", issue.Message)
-		ui.Print("    %s", ui.Dim(issue.Action))
+		_ui.Print("  %s %s", icon, _ui.Bold(scope))
+		_ui.Print("    %s", issue.Message)
+		_ui.Print("    %s", _ui.Dim(issue.Action))
 		if issue.Error != "" {
-			ui.Print("    %s %s", ui.Red("repair failed:"), issue.Error)
+			_ui.Print("    %s %s", _ui.Red("repair failed:"), issue.Error)
 		}
 	}
 }

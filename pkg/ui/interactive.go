@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/term"
+	term "golang.org/x/term"
 )
 
 // Test hooks for terminal raw mode operations.

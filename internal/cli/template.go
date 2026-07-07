@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	"github.com/justjundana/git-config-manager/internal/template"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_template "github.com/justjundana/git-config-manager/internal/template"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newTemplateCmd() *cobra.Command {
@@ -78,10 +78,10 @@ Examples:
 			}
 
 			// Create from flags
-			t := &template.Template{
+			t := &_template.Template{
 				Name:        name,
 				Description: description,
-				Git:         template.GitConfigTemplate{},
+				Git:         _template.GitConfigTemplate{},
 			}
 
 			if editor != "" {
@@ -107,7 +107,7 @@ Examples:
 				return err
 			}
 
-			ui.Success("Template %q created", name)
+			_ui.Success("Template %q created", name)
 			templatePrintSummary(t)
 			return nil
 		},
@@ -125,22 +125,22 @@ Examples:
 }
 
 func templateCreateInteractive(name string) error {
-	ui.Header("%s Create Template: %s", ui.IconTemplate, name)
-	ui.Blank()
+	_ui.Header("%s Create Template: %s", _ui.IconTemplate, name)
+	_ui.Blank()
 
-	desc, err := ui.AskString("Description (what is this template for?):", "")
+	desc, err := _ui.AskString("Description (what is this template for?):", "")
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Git Core Settings")
-	editor, err := ui.AskString("Git editor (e.g. vim, code --wait, nano — leave empty to skip):", "")
+	_ui.SubHeader("Git Core Settings")
+	editor, err := _ui.AskString("Git editor (e.g. vim, code --wait, nano — leave empty to skip):", "")
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Pull Strategy")
-	rebase, err := ui.AskSelect("Pull strategy:", []string{
+	_ui.SubHeader("Pull Strategy")
+	rebase, err := _ui.AskSelect("Pull strategy:", []string{
 		"rebase (recommended — linear history)",
 		"merge (default git behavior)",
 		"ff-only (fast-forward only)",
@@ -150,25 +150,25 @@ func templateCreateInteractive(name string) error {
 		return err
 	}
 
-	ui.SubHeader("Commit Signing")
-	gpgSign, err := ui.AskConfirm("Require GPG-signed commits?", false)
+	_ui.SubHeader("Commit Signing")
+	gpgSign, err := _ui.AskConfirm("Require GPG-signed commits?", false)
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Push Settings")
-	autoSetup, err := ui.AskConfirm("Auto setup remote tracking branch on push?", true)
+	_ui.SubHeader("Push Settings")
+	autoSetup, err := _ui.AskConfirm("Auto setup remote tracking branch on push?", true)
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Git Aliases (optional)")
-	ui.Print("  Enter aliases one per line (format: short=full command)")
-	ui.Print("  Leave empty and press Enter to finish.")
+	_ui.SubHeader("Git Aliases (optional)")
+	_ui.Print("  Enter aliases one per line (format: short=full command)")
+	_ui.Print("  Leave empty and press Enter to finish.")
 
 	aliasMap := make(map[string]string)
 	for {
-		alias, askErr := ui.AskString("  Alias (e.g. co=checkout):", "")
+		alias, askErr := _ui.AskString("  Alias (e.g. co=checkout):", "")
 		if askErr != nil {
 			return askErr
 		}
@@ -177,16 +177,16 @@ func templateCreateInteractive(name string) error {
 		}
 		parts := strings.SplitN(alias, "=", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			ui.Warning("Invalid format. Use: short=command (e.g. co=checkout)")
+			_ui.Warning("Invalid format. Use: short=command (e.g. co=checkout)")
 			continue
 		}
 		aliasMap[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 
-	t := &template.Template{
+	t := &_template.Template{
 		Name:        name,
 		Description: desc,
-		Git:         template.GitConfigTemplate{},
+		Git:         _template.GitConfigTemplate{},
 	}
 
 	if editor != "" {
@@ -218,10 +218,10 @@ func templateCreateInteractive(name string) error {
 		return err
 	}
 
-	ui.Blank()
-	ui.Success("Template %q created!", name)
+	_ui.Blank()
+	_ui.Success("Template %q created!", name)
 	templatePrintSummary(t)
-	ui.NextSteps([]string{
+	_ui.NextSteps([]string{
 		fmt.Sprintf("Apply to a profile: gcm template apply %s <profile>", name),
 		fmt.Sprintf("Create profile from template: gcm profile create <name> --from-template %s -i", name),
 		fmt.Sprintf("Share with team: gcm template export %s > %s.yaml", name, name),
@@ -235,10 +235,10 @@ func templateCreateFromProfile(name, profileName, description string) error {
 		return err
 	}
 
-	t := &template.Template{
+	t := &_template.Template{
 		Name:        name,
 		Description: description,
-		Git:         template.GitConfigTemplate{},
+		Git:         _template.GitConfigTemplate{},
 	}
 
 	if t.Description == "" {
@@ -317,7 +317,7 @@ func templateCreateFromProfile(name, profileName, description string) error {
 		return err
 	}
 
-	ui.Success("Template %q created from profile %q", name, profileName)
+	_ui.Success("Template %q created from profile %q", name, profileName)
 	templatePrintSummary(t)
 	return nil
 }
@@ -353,22 +353,22 @@ Examples:
 			}
 
 			// Show what will change
-			ui.Header("Applying template %q to profile %q", templateName, profileName)
-			ui.Blank()
+			_ui.Header("Applying template %q to profile %q", templateName, profileName)
+			_ui.Blank()
 			changes := templateShowChanges(t, p)
 			if changes == 0 {
-				ui.Info("No changes to apply — template has no settings configured")
+				_ui.Info("No changes to apply — template has no settings configured")
 				return nil
 			}
 
 			if !force {
-				ui.Blank()
-				confirm, askErr := ui.AskConfirm("Apply these changes?", true)
+				_ui.Blank()
+				confirm, askErr := _ui.AskConfirm("Apply these changes?", true)
 				if askErr != nil {
 					return askErr
 				}
 				if !confirm {
-					ui.Info("Cancelled")
+					_ui.Info("Cancelled")
 					return nil
 				}
 			}
@@ -380,8 +380,8 @@ Examples:
 				return err
 			}
 
-			ui.Blank()
-			ui.Success("Template %q applied to profile %q", templateName, profileName)
+			_ui.Blank()
+			_ui.Success("Template %q applied to profile %q", templateName, profileName)
 			return nil
 		},
 	}
@@ -390,43 +390,43 @@ Examples:
 	return cmd
 }
 
-func templateShowChanges(t *template.Template, _ *profile.Profile) int {
+func templateShowChanges(t *_template.Template, _ *_profile.Profile) int {
 	count := 0
 
 	if t.Git.Core != nil {
 		for k, v := range t.Git.Core {
-			ui.Print("  %s core.%s = %v", ui.Green("+"), k, v)
+			_ui.Print("  %s core.%s = %v", _ui.Green("+"), k, v)
 			count++
 		}
 	}
 	if t.Git.Commit != nil {
 		for k, v := range t.Git.Commit {
-			ui.Print("  %s commit.%s = %v", ui.Green("+"), k, v)
+			_ui.Print("  %s commit.%s = %v", _ui.Green("+"), k, v)
 			count++
 		}
 	}
 	if t.Git.Pull != nil {
 		for k, v := range t.Git.Pull {
-			ui.Print("  %s pull.%s = %v", ui.Green("+"), k, v)
+			_ui.Print("  %s pull.%s = %v", _ui.Green("+"), k, v)
 			count++
 		}
 	}
 	if t.Git.Push != nil {
 		for k, v := range t.Git.Push {
-			ui.Print("  %s push.%s = %v", ui.Green("+"), k, v)
+			_ui.Print("  %s push.%s = %v", _ui.Green("+"), k, v)
 			count++
 		}
 	}
 	if len(t.Git.Aliases) > 0 {
 		for k, v := range t.Git.Aliases {
-			ui.Print("  %s alias.%s = %s", ui.Green("+"), k, v)
+			_ui.Print("  %s alias.%s = %s", _ui.Green("+"), k, v)
 			count++
 		}
 	}
 	return count
 }
 
-func applyTemplateToProfile(t *template.Template, p *profile.Profile) {
+func applyTemplateToProfile(t *_template.Template, p *_profile.Profile) {
 	// Apply core settings
 	if t.Git.Core != nil {
 		if v, ok := t.Git.Core["editor"]; ok {
@@ -521,9 +521,9 @@ func templateListRun() error {
 	}
 
 	if len(templates) == 0 {
-		ui.Info("No templates found. Create one:")
-		ui.Print("  gcm template create <name> -i")
-		ui.Print("  gcm template create <name> --from-profile <profile>")
+		_ui.Info("No templates found. Create one:")
+		_ui.Print("  gcm template create <name> -i")
+		_ui.Print("  gcm template create <name> --from-profile <profile>")
 		return nil
 	}
 
@@ -536,7 +536,7 @@ func templateListRun() error {
 		})
 	}
 
-	ui.SimpleTable(headers, rows)
+	_ui.SimpleTable(headers, rows)
 	return nil
 }
 
@@ -549,43 +549,43 @@ func newTemplateShowCmd() *cobra.Command {
 				return err
 			}
 
-			ui.Header("Template: %s", t.Name)
+			_ui.Header("Template: %s", t.Name)
 			if t.Description != "" {
-				ui.Detail("Description", t.Description)
+				_ui.Detail("Description", t.Description)
 			}
-			ui.Detail("Version", t.Metadata.Version)
-			ui.Detail("Created", t.Metadata.Created.Format("2006-01-02 15:04"))
+			_ui.Detail("Version", t.Metadata.Version)
+			_ui.Detail("Created", t.Metadata.Created.Format("2006-01-02 15:04"))
 			if t.Metadata.Author != "" {
-				ui.Detail("Author", t.Metadata.Author)
+				_ui.Detail("Author", t.Metadata.Author)
 			}
 
-			ui.Blank()
-			ui.SubHeader("Git Settings")
+			_ui.Blank()
+			_ui.SubHeader("Git Settings")
 
 			if t.Git.Core != nil {
 				for k, v := range t.Git.Core {
-					ui.Detail(fmt.Sprintf("core.%s", k), fmt.Sprintf("%v", v))
+					_ui.Detail(fmt.Sprintf("core.%s", k), fmt.Sprintf("%v", v))
 				}
 			}
 			if t.Git.Commit != nil {
 				for k, v := range t.Git.Commit {
-					ui.Detail(fmt.Sprintf("commit.%s", k), fmt.Sprintf("%v", v))
+					_ui.Detail(fmt.Sprintf("commit.%s", k), fmt.Sprintf("%v", v))
 				}
 			}
 			if t.Git.Pull != nil {
 				for k, v := range t.Git.Pull {
-					ui.Detail(fmt.Sprintf("pull.%s", k), fmt.Sprintf("%v", v))
+					_ui.Detail(fmt.Sprintf("pull.%s", k), fmt.Sprintf("%v", v))
 				}
 			}
 			if t.Git.Push != nil {
 				for k, v := range t.Git.Push {
-					ui.Detail(fmt.Sprintf("push.%s", k), fmt.Sprintf("%v", v))
+					_ui.Detail(fmt.Sprintf("push.%s", k), fmt.Sprintf("%v", v))
 				}
 			}
 			if len(t.Git.Aliases) > 0 {
-				ui.SubHeader("Aliases")
+				_ui.SubHeader("Aliases")
 				for k, v := range t.Git.Aliases {
-					ui.Detail(k, v)
+					_ui.Detail(k, v)
 				}
 			}
 
@@ -600,16 +600,16 @@ func newTemplateDeleteCmd() *cobra.Command {
 		Use: "delete <name>", Short: "Delete a template", Aliases: []string{"rm"}, Args: requireArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if !yes {
-				confirm, err := ui.AskConfirm(fmt.Sprintf("Delete template %q?", args[0]), false)
+				confirm, err := _ui.AskConfirm(fmt.Sprintf("Delete template %q?", args[0]), false)
 				if err != nil || !confirm {
-					ui.Info("Cancelled")
+					_ui.Info("Cancelled")
 					return nil
 				}
 			}
 			if err := ctr.TemplateManager.Delete(args[0]); err != nil {
 				return err
 			}
-			ui.Success("Template %q deleted", args[0])
+			_ui.Success("Template %q deleted", args[0])
 			return nil
 		},
 	}
@@ -662,16 +662,16 @@ Example file (my-template.yaml):
 			if err != nil {
 				return err
 			}
-			ui.Success("Template %q imported", t.Name)
+			_ui.Success("Template %q imported", t.Name)
 			templatePrintSummary(t)
 			return nil
 		},
 	}
 }
 
-func templatePrintSummary(t *template.Template) {
+func templatePrintSummary(t *_template.Template) {
 	if t.Description != "" {
-		ui.Detail("Description", t.Description)
+		_ui.Detail("Description", t.Description)
 	}
 	settings := 0
 	if t.Git.Core != nil {
@@ -689,7 +689,7 @@ func templatePrintSummary(t *template.Template) {
 	if len(t.Git.Aliases) > 0 {
 		settings += len(t.Git.Aliases)
 	}
-	ui.Detail("Settings", fmt.Sprintf("%d configured", settings))
+	_ui.Detail("Settings", fmt.Sprintf("%d configured", settings))
 }
 
 func parseAliases(input []string) map[string]string {

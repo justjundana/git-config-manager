@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func isolateGitEnv(t *testing.T) string {
@@ -36,7 +36,7 @@ func isolateChdir(t *testing.T, dir string) {
 	t.Cleanup(func() { os.Chdir(origDir) })
 }
 
-func newTestSwitcher(t *testing.T) (*Switcher, *Manager, *config.Config) {
+func newTestSwitcher(t *testing.T) (*Switcher, *Manager, *_config.Config) {
 	t.Helper()
 	dir := t.TempDir()
 
@@ -47,7 +47,7 @@ func newTestSwitcher(t *testing.T) (*Switcher, *Manager, *config.Config) {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, ".config"))
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(dir, "profiles")
 	cfg.TemplatesDir = filepath.Join(dir, "templates")
 	cfg.CacheDir = filepath.Join(dir, "cache")
@@ -58,8 +58,8 @@ func newTestSwitcher(t *testing.T) (*Switcher, *Manager, *config.Config) {
 		t.Fatal(err)
 	}
 
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	mgr := NewManager(cfg, fs, log)
 	sw := NewSwitcher(cfg, mgr, log)
 	return sw, mgr, cfg
@@ -1146,7 +1146,7 @@ func TestActivate_ConfigSaveError(t *testing.T) {
 	mgr.Create(validProfile("work"))
 
 	orig := configSaveFn
-	configSaveFn = func(*config.Config) error { return errors.New("save failed") }
+	configSaveFn = func(*_config.Config) error { return errors.New("save failed") }
 	defer func() { configSaveFn = orig }()
 
 	err := sw.Activate("work", ScopeGlobal)

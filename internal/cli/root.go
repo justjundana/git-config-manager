@@ -2,17 +2,17 @@
 package cli
 
 import (
-	"github.com/justjundana/git-config-manager/internal/container"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_container "github.com/justjundana/git-config-manager/internal/container"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // ctr is set by SetContainer before commands execute.
-var ctr *container.Container
+var ctr *_container.Container
 
 // SetContainer injects the dependency container into CLI commands.
-func SetContainer(c *container.Container) {
+func SetContainer(c *_container.Container) {
 	ctr = c
 }
 
@@ -24,20 +24,20 @@ func NewRootCmd() *cobra.Command {
 		Long: "Git Config Manager (GCM) - Manage your Git identities with ease.\n\n" +
 			"GCM helps you manage multiple provider-scoped Git identities, SSH keys,\n" +
 			"GPG keys, and provider accounts from a single, intuitive CLI tool.\n\n" +
-			ui.Bold("Getting Started") + "\n" +
+			_ui.Bold("Getting Started") + "\n" +
 			"  gcm setup                     Guided first-time setup (start here!)\n" +
 			"  gcm status                    See your current state at a glance\n" +
 			"  gcm repair                    Inspect profile/provider consistency\n\n" +
-			ui.Bold("Daily Use") + "\n" +
+			_ui.Bold("Daily Use") + "\n" +
 			"  gcm use <profile>             Switch to a profile\n" +
 			"  gcm current                   Show which profile is active\n" +
 			"  gcm profile list              See all profiles\n" +
 			"  gcm connect <profile>         Connect a profile to GitHub/GitLab\n\n" +
-			ui.Bold("Management") + "\n" +
+			_ui.Bold("Management") + "\n" +
 			"  gcm profile create <name> -i  Create a new profile interactively\n" +
 			"  gcm ssh generate <profile>    Generate SSH key for a profile\n" +
 			"  gcm switch-provider <p> <id>  Move a profile to another provider\n\n" +
-			ui.Bold("Maintenance") + "\n" +
+			_ui.Bold("Maintenance") + "\n" +
 			"  gcm update                    Self-update to the latest version\n" +
 			"  gcm doctor                    System health check\n" +
 			"  gcm version                   Show version info\n\n" +

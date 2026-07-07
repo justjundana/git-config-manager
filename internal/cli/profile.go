@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/internal/gpg"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/ssh"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_gpg "github.com/justjundana/git-config-manager/internal/gpg"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ssh "github.com/justjundana/git-config-manager/internal/ssh"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newProfileCmd() *cobra.Command {
@@ -68,16 +68,16 @@ Examples:
 				return fmt.Errorf("--name and --email are required (or use --interactive)")
 			}
 
-			p := &profile.Profile{
+			p := &_profile.Profile{
 				Name: profileName,
-				Git: profile.GitConfig{
-					User: profile.GitUser{Name: name, Email: email},
-					Core: profile.GitCore{Editor: editor},
+				Git: _profile.GitConfig{
+					User: _profile.GitUser{Name: name, Email: email},
+					Core: _profile.GitCore{Editor: editor},
 				},
 			}
 
 			if sshKey != "" {
-				p.SSH = &profile.SSHConfig{KeyPath: sshKey}
+				p.SSH = &_profile.SSHConfig{KeyPath: sshKey}
 			}
 
 			// Apply template settings if specified
@@ -90,24 +90,24 @@ Examples:
 			}
 
 			if err := ctr.ProfileManager.Create(p); err != nil {
-				ctr.AuditLogger.Log(audit.ActionProfileCreate, profileName, nil, err)
+				ctr.AuditLogger.Log(_audit.ActionProfileCreate, profileName, nil, err)
 				return err
 			}
-			ctr.AuditLogger.Log(audit.ActionProfileCreate, profileName, nil, nil)
+			ctr.AuditLogger.Log(_audit.ActionProfileCreate, profileName, nil, nil)
 
-			ui.Success("Profile %q created successfully", profileName)
-			ui.Blank()
-			ui.Detail("Name", name)
-			ui.Detail("Email", email)
+			_ui.Success("Profile %q created successfully", profileName)
+			_ui.Blank()
+			_ui.Detail("Name", name)
+			_ui.Detail("Email", email)
 			if fromTemplate != "" {
-				ui.Detail("Template", fromTemplate)
+				_ui.Detail("Template", fromTemplate)
 			}
 
 			// If this is the only profile, activate as global default automatically
 			if activated := activateIfOnlyProfile(profileName); activated {
 				return nil
 			}
-			ui.NextSteps([]string{
+			_ui.NextSteps([]string{
 				fmt.Sprintf("Generate SSH key: gcm ssh generate %s", profileName),
 				fmt.Sprintf("Activate profile: gcm use %s", profileName),
 			})
@@ -126,7 +126,7 @@ Examples:
 }
 
 func profileCreateInteractive(profileName string, fromTemplate string) error {
-	ui.Header("%s Create New Profile: %s", ui.IconProfile, profileName)
+	_ui.Header("%s Create New Profile: %s", _ui.IconProfile, profileName)
 
 	// If template specified, show what will be applied
 	if fromTemplate != "" {
@@ -134,36 +134,36 @@ func profileCreateInteractive(profileName string, fromTemplate string) error {
 		if err != nil {
 			return fmt.Errorf("loading template: %w", err)
 		}
-		ui.Print("  Using template: %s", ui.Cyan(fromTemplate))
+		_ui.Print("  Using template: %s", _ui.Cyan(fromTemplate))
 		if t.Description != "" {
-			ui.Print("  %s", ui.Dim(t.Description))
+			_ui.Print("  %s", _ui.Dim(t.Description))
 		}
-		ui.Blank()
+		_ui.Blank()
 	}
 
-	ui.SubHeader("Step 1/4: Basic Information")
-	name, err := ui.AskString("Your full name:", "")
+	_ui.SubHeader("Step 1/4: Basic Information")
+	name, err := _ui.AskString("Your full name:", "")
 	if err != nil {
 		return err
 	}
-	email, err := ui.AskString("Your email:", "")
+	email, err := _ui.AskString("Your email:", "")
 	if err != nil {
 		return err
 	}
-	editor, err := ui.AskString("Git editor (leave empty for default):", "")
-	if err != nil {
-		return err
-	}
-
-	ui.SubHeader("Step 2/4: SSH Configuration")
-	generateSSH, err := ui.AskConfirm("Generate a new SSH key?", true)
+	editor, err := _ui.AskString("Git editor (leave empty for default):", "")
 	if err != nil {
 		return err
 	}
 
-	var sshConfig *profile.SSHConfig
+	_ui.SubHeader("Step 2/4: SSH Configuration")
+	generateSSH, err := _ui.AskConfirm("Generate a new SSH key?", true)
+	if err != nil {
+		return err
+	}
+
+	var sshConfig *_profile.SSHConfig
 	if generateSSH {
-		keyType, askErr := ui.AskSelect("SSH key type:", []string{"ed25519 (recommended)", "rsa (4096 bits)", "ecdsa"})
+		keyType, askErr := _ui.AskSelect("SSH key type:", []string{"ed25519 (recommended)", "rsa (4096 bits)", "ecdsa"})
 		if askErr != nil {
 			return askErr
 		}
@@ -174,63 +174,63 @@ func profileCreateInteractive(profileName string, fromTemplate string) error {
 			keyTypeClean = "ecdsa"
 		}
 
-		sp := ui.NewSpinner("Generating SSH key...")
+		sp := _ui.NewSpinner("Generating SSH key...")
 		sp.Start()
-		keyInfo, genErr := ctr.SSHManager.Generate(ssh.GenerateOptions{
+		keyInfo, genErr := ctr.SSHManager.Generate(_ssh.GenerateOptions{
 			Profile: profileName,
 			KeyType: keyTypeClean,
 		})
 		if genErr != nil {
 			sp.StopError("Failed to generate SSH key")
-			ui.Warning("SSH key generation failed: %v", genErr)
+			_ui.Warning("SSH key generation failed: %v", genErr)
 		} else {
 			sp.Stop("SSH key generated")
-			sshConfig = &profile.SSHConfig{
+			sshConfig = &_profile.SSHConfig{
 				KeyPath:     keyInfo.Path,
-				KeyType:     profile.KeyType(keyInfo.Type),
+				KeyType:     _profile.KeyType(keyInfo.Type),
 				Fingerprint: keyInfo.Fingerprint,
 			}
 		}
 	}
 
-	ui.SubHeader("Step 3/4: GPG Signing")
-	enableGPG, err := ui.AskConfirm("Enable commit signing?", true)
+	_ui.SubHeader("Step 3/4: GPG Signing")
+	enableGPG, err := _ui.AskConfirm("Enable commit signing?", true)
 	if err != nil {
 		return err
 	}
 
-	var gpgConfig *profile.GPGConfig
+	var gpgConfig *_profile.GPGConfig
 	if enableGPG {
-		sp := ui.NewSpinner("Generating GPG key...")
+		sp := _ui.NewSpinner("Generating GPG key...")
 		sp.Start()
-		keyInfo, genErr := ctr.GPGManager.Generate(gpg.GenerateOptions{
+		keyInfo, genErr := ctr.GPGManager.Generate(_gpg.GenerateOptions{
 			Name: name, Email: email,
 		})
 		if genErr != nil {
 			sp.StopError("Failed to generate GPG key")
-			ui.Warning("GPG key generation failed: %v", genErr)
+			_ui.Warning("GPG key generation failed: %v", genErr)
 		} else {
 			sp.Stop("GPG key generated")
-			gpgConfig = &profile.GPGConfig{KeyID: keyInfo.KeyID}
+			gpgConfig = &_profile.GPGConfig{KeyID: keyInfo.KeyID}
 		}
 	}
 
-	p := &profile.Profile{
+	p := &_profile.Profile{
 		Name: profileName,
-		Git: profile.GitConfig{
-			User: profile.GitUser{Name: name, Email: email},
-			Core: profile.GitCore{Editor: editor},
+		Git: _profile.GitConfig{
+			User: _profile.GitUser{Name: name, Email: email},
+			Core: _profile.GitCore{Editor: editor},
 		},
 		SSH: sshConfig, GPG: gpgConfig,
 	}
 
-	ui.SubHeader("Step 4/4: Provider Account (Optional)")
+	_ui.SubHeader("Step 4/4: Provider Account (Optional)")
 	if err := promptProviderAccountUsernames(p); err != nil {
 		return err
 	}
 
 	if gpgConfig != nil {
-		p.Git.Commit.GPGSign = profile.BoolPtr(true)
+		p.Git.Commit.GPGSign = _profile.BoolPtr(true)
 		p.Git.User.SigningKey = gpgConfig.KeyID
 	}
 
@@ -243,19 +243,19 @@ func profileCreateInteractive(profileName string, fromTemplate string) error {
 	}
 
 	if err := ctr.ProfileManager.Create(p); err != nil {
-		ctr.AuditLogger.Log(audit.ActionProfileCreate, profileName, nil, err)
+		ctr.AuditLogger.Log(_audit.ActionProfileCreate, profileName, nil, err)
 		return err
 	}
-	ctr.AuditLogger.Log(audit.ActionProfileCreate, profileName, nil, nil)
+	ctr.AuditLogger.Log(_audit.ActionProfileCreate, profileName, nil, nil)
 
-	ui.Blank()
-	ui.Success("Profile %q created and configured!", profileName)
+	_ui.Blank()
+	_ui.Success("Profile %q created and configured!", profileName)
 
 	// If this is the only profile, activate as global default automatically
 	if activated := activateIfOnlyProfile(profileName); activated {
 		return nil
 	}
-	ui.NextSteps([]string{
+	_ui.NextSteps([]string{
 		fmt.Sprintf("Activate it now: gcm use %s", profileName),
 		"Create more profiles: gcm profile create <name> -i",
 	})
@@ -273,11 +273,11 @@ func activateIfOnlyProfile(profileName string) bool {
 	if ctr.Config.DefaultProfile != "" {
 		return false
 	}
-	if err := ctr.ProfileSwitcher.Activate(profileName, profile.ScopeGlobal); err != nil {
-		ui.Warning("Could not activate globally: %v", err)
+	if err := ctr.ProfileSwitcher.Activate(profileName, _profile.ScopeGlobal); err != nil {
+		_ui.Warning("Could not activate globally: %v", err)
 		return false
 	}
-	ui.Success("Profile %q set as global default (only profile)", profileName)
+	_ui.Success("Profile %q set as global default (only profile)", profileName)
 	return true
 }
 
@@ -295,7 +295,7 @@ func profileListRun(_ *cobra.Command, _ []string) error {
 	}
 
 	if len(profiles) == 0 {
-		ui.Info("No profiles found. Create one with: gcm profile create <name> -i")
+		_ui.Info("No profiles found. Create one with: gcm profile create <name> -i")
 		return nil
 	}
 
@@ -307,36 +307,36 @@ func profileListRun(_ *cobra.Command, _ []string) error {
 	for _, p := range profiles {
 		status := ""
 		if p.Name == currentName && p.Name == ctr.Config.DefaultProfile {
-			status = ui.Green("●") + " " + ui.Cyan("default")
+			status = _ui.Green("●") + " " + _ui.Cyan("default")
 		} else if p.Name == currentName {
-			status = ui.Green("●")
+			status = _ui.Green("●")
 		} else if p.Name == ctr.Config.DefaultProfile {
-			status = ui.Cyan("default")
+			status = _ui.Cyan("default")
 		}
 
-		signing := ui.Red("✗")
+		signing := _ui.Red("✗")
 		if p.Git.Commit.GPGSign != nil && *p.Git.Commit.GPGSign {
-			signing = ui.Green("✓")
+			signing = _ui.Green("✓")
 		}
 
-		lastUsed := ui.Dim("never")
+		lastUsed := _ui.Dim("never")
 		if p.Metadata.LastUsed != nil {
 			lastUsed = formatTimeAgo(*p.Metadata.LastUsed)
 		}
 
-		providerName := ui.Dim("—")
+		providerName := _ui.Dim("—")
 		if profileHasMultipleProviders(p) {
-			providerName = ui.Yellow("multiple")
-		} else if def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper); ok {
+			providerName = _ui.Yellow("multiple")
+		} else if def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper); ok {
 			providerName = def.DisplayName
 		}
 
 		rows = append(rows, []string{p.Name, status, p.Git.User.Email, providerName, signing, lastUsed})
 	}
 
-	ui.SimpleTable(headers, rows)
-	ui.Blank()
-	ui.Print("%d profiles", len(profiles))
+	_ui.SimpleTable(headers, rows)
+	_ui.Blank()
+	_ui.Print("%d profiles", len(profiles))
 	return nil
 }
 
@@ -346,34 +346,34 @@ func newProfileShowCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			p, err := ctr.ProfileManager.Get(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
-			ui.Header("Profile: %s", p.Name)
-			ui.SubHeader("Git Configuration")
-			ui.Detail("Name", p.Git.User.Name)
-			ui.Detail("Email", p.Git.User.Email)
+			_ui.Header("Profile: %s", p.Name)
+			_ui.SubHeader("Git Configuration")
+			_ui.Detail("Name", p.Git.User.Name)
+			_ui.Detail("Email", p.Git.User.Email)
 			if p.Git.Core.Editor != "" {
-				ui.Detail("Editor", p.Git.Core.Editor)
+				_ui.Detail("Editor", p.Git.Core.Editor)
 			}
 			if p.SSH != nil {
-				ui.SubHeader("SSH")
-				ui.Detail("Key", p.SSH.KeyPath)
-				ui.Detail("Type", string(p.SSH.KeyType))
+				_ui.SubHeader("SSH")
+				_ui.Detail("Key", p.SSH.KeyPath)
+				_ui.Detail("Type", string(p.SSH.KeyType))
 				if p.SSH.Fingerprint != "" {
-					ui.Detail("Fingerprint", p.SSH.Fingerprint)
+					_ui.Detail("Fingerprint", p.SSH.Fingerprint)
 				}
 			}
 			if p.GPG != nil {
-				ui.SubHeader("GPG")
-				ui.Detail("Key ID", p.GPG.KeyID)
+				_ui.SubHeader("GPG")
+				_ui.Detail("Key ID", p.GPG.KeyID)
 			}
 			printProfileProviderAccounts(p)
-			ui.SubHeader("Metadata")
-			ui.Detail("Created", p.Metadata.Created.Format("2006-01-02 15:04:05"))
-			ui.Detail("Usage", fmt.Sprintf("%d", p.Metadata.UsageCount))
+			_ui.SubHeader("Metadata")
+			_ui.Detail("Created", p.Metadata.Created.Format("2006-01-02 15:04:05"))
+			_ui.Detail("Usage", fmt.Sprintf("%d", p.Metadata.UsageCount))
 			return nil
 		},
 	}
@@ -404,9 +404,9 @@ Examples:
 			profileName := args[0]
 			p, err := ctr.ProfileManager.Get(profileName)
 			if err != nil {
-				ui.Error("profile %q not found", profileName)
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", profileName)
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(profileName)
 			}
 
@@ -438,15 +438,15 @@ Examples:
 			}
 
 			if !changed {
-				ui.Info("No changes specified. Use --interactive for guided editing.")
+				_ui.Info("No changes specified. Use --interactive for guided editing.")
 				return nil
 			}
 
 			if err := ctr.ProfileManager.Update(p); err != nil {
 				return err
 			}
-			ctr.AuditLogger.Log(audit.ActionProfileUpdate, profileName, nil, nil)
-			ui.Success("Profile %q updated", profileName)
+			ctr.AuditLogger.Log(_audit.ActionProfileUpdate, profileName, nil, nil)
+			_ui.Success("Profile %q updated", profileName)
 			return nil
 		},
 	}
@@ -458,15 +458,15 @@ Examples:
 	return cmd
 }
 
-func profileEditInteractive(p *profile.Profile) error {
-	ui.Header("%s Edit Profile: %s", ui.IconProfile, p.Name)
+func profileEditInteractive(p *_profile.Profile) error {
+	_ui.Header("%s Edit Profile: %s", _ui.IconProfile, p.Name)
 
-	ui.SubHeader("Basic Information")
-	newName, err := ui.AskString(fmt.Sprintf("Name [%s]:", p.Git.User.Name), p.Git.User.Name)
+	_ui.SubHeader("Basic Information")
+	newName, err := _ui.AskString(fmt.Sprintf("Name [%s]:", p.Git.User.Name), p.Git.User.Name)
 	if err != nil {
 		return err
 	}
-	newEmail, err := ui.AskString(fmt.Sprintf("Email [%s]:", p.Git.User.Email), p.Git.User.Email)
+	newEmail, err := _ui.AskString(fmt.Sprintf("Email [%s]:", p.Git.User.Email), p.Git.User.Email)
 	if err != nil {
 		return err
 	}
@@ -476,29 +476,29 @@ func profileEditInteractive(p *profile.Profile) error {
 	if editorDefault != "" {
 		editorPrompt = fmt.Sprintf("Git editor [%s]:", editorDefault)
 	}
-	newEditor, err := ui.AskString(editorPrompt, editorDefault)
+	newEditor, err := _ui.AskString(editorPrompt, editorDefault)
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Signing Configuration")
+	_ui.SubHeader("Signing Configuration")
 	signingKeyDefault := p.Git.User.SigningKey
 	signingPrompt := "Signing key ID (leave empty to skip):"
 	if signingKeyDefault != "" {
 		signingPrompt = fmt.Sprintf("Signing key ID [%s]:", signingKeyDefault)
 	}
-	newSigningKey, err := ui.AskString(signingPrompt, signingKeyDefault)
+	newSigningKey, err := _ui.AskString(signingPrompt, signingKeyDefault)
 	if err != nil {
 		return err
 	}
 
 	gpgSignEnabled := p.Git.Commit.GPGSign != nil && *p.Git.Commit.GPGSign
-	newGPGSign, err := ui.AskConfirm("Enable commit signing?", gpgSignEnabled)
+	newGPGSign, err := _ui.AskConfirm("Enable commit signing?", gpgSignEnabled)
 	if err != nil {
 		return err
 	}
 
-	ui.SubHeader("Provider Account")
+	_ui.SubHeader("Provider Account")
 	if err := promptProviderAccountUsernames(p); err != nil {
 		return err
 	}
@@ -508,12 +508,12 @@ func profileEditInteractive(p *profile.Profile) error {
 	p.Git.User.Email = newEmail
 	p.Git.Core.Editor = newEditor
 	p.Git.User.SigningKey = newSigningKey
-	p.Git.Commit.GPGSign = profile.BoolPtr(newGPGSign)
+	p.Git.Commit.GPGSign = _profile.BoolPtr(newGPGSign)
 
 	// Update GPG config key ID if signing key changed
 	if newSigningKey != "" {
 		if p.GPG == nil {
-			p.GPG = &profile.GPGConfig{}
+			p.GPG = &_profile.GPGConfig{}
 		}
 		p.GPG.KeyID = newSigningKey
 	}
@@ -521,20 +521,20 @@ func profileEditInteractive(p *profile.Profile) error {
 	if err := ctr.ProfileManager.Update(p); err != nil {
 		return err
 	}
-	ctr.AuditLogger.Log(audit.ActionProfileUpdate, p.Name, nil, nil)
+	ctr.AuditLogger.Log(_audit.ActionProfileUpdate, p.Name, nil, nil)
 
-	ui.Blank()
-	ui.Success("Profile %q updated!", p.Name)
-	ui.Detail("Name", newName)
-	ui.Detail("Email", newEmail)
+	_ui.Blank()
+	_ui.Success("Profile %q updated!", p.Name)
+	_ui.Detail("Name", newName)
+	_ui.Detail("Email", newEmail)
 	if newEditor != "" {
-		ui.Detail("Editor", newEditor)
+		_ui.Detail("Editor", newEditor)
 	}
 	if newSigningKey != "" {
-		ui.Detail("Signing Key", newSigningKey)
+		_ui.Detail("Signing Key", newSigningKey)
 	}
 	if newGPGSign {
-		ui.Detail("GPG Signing", "enabled")
+		_ui.Detail("GPG Signing", "enabled")
 	}
 	printProfileProviderAccountSummary(p)
 
@@ -556,20 +556,20 @@ func newProfileDeleteCmd() *cobra.Command {
 
 			// Check if trying to delete the active profile
 			if isActiveProfile(profileName) {
-				ui.Warning("Profile %q is currently active.", profileName)
-				ui.Print("  Switch to another profile first: gcm use <other-profile>")
-				ui.Blank()
+				_ui.Warning("Profile %q is currently active.", profileName)
+				_ui.Print("  Switch to another profile first: gcm use <other-profile>")
+				_ui.Blank()
 				if !yes {
-					confirm, err := ui.AskConfirm("Delete the active profile anyway?", false)
+					confirm, err := _ui.AskConfirm("Delete the active profile anyway?", false)
 					if err != nil || !confirm {
-						ui.Info("Cancelled")
+						_ui.Info("Cancelled")
 						return nil
 					}
 				}
 			} else if !yes {
-				confirm, err := ui.AskConfirm(fmt.Sprintf("Delete profile %q?", profileName), false)
+				confirm, err := _ui.AskConfirm(fmt.Sprintf("Delete profile %q?", profileName), false)
 				if err != nil || !confirm {
-					ui.Info("Cancelled")
+					_ui.Info("Cancelled")
 					return nil
 				}
 			}
@@ -578,11 +578,11 @@ func newProfileDeleteCmd() *cobra.Command {
 			ctr.ProfileSwitcher.Deactivate(profileName)
 
 			if err := ctr.ProfileManager.Delete(profileName, true); err != nil {
-				ctr.AuditLogger.Log(audit.ActionProfileDelete, profileName, nil, err)
+				ctr.AuditLogger.Log(_audit.ActionProfileDelete, profileName, nil, err)
 				return fmt.Errorf("could not delete profile %q\n\n  Make sure the profile exists: gcm profile list", profileName)
 			}
-			ctr.AuditLogger.Log(audit.ActionProfileDelete, profileName, nil, nil)
-			ui.Success("Profile %q deleted", profileName)
+			ctr.AuditLogger.Log(_audit.ActionProfileDelete, profileName, nil, nil)
+			_ui.Success("Profile %q deleted", profileName)
 
 			// Read SSH public key before deleting files (needed for GitHub deletion later)
 			var sshPubKey string
@@ -593,30 +593,30 @@ func newProfileDeleteCmd() *cobra.Command {
 			// Clean up provider keys before deleting local key material.
 			var sshDeletedFromProviders, gpgDeletedFromProviders []string
 			ctx := context.Background()
-			for _, def := range providerDefinitionsWithCapability(providerpkg.CapabilityCredentialHelper) {
+			for _, def := range providerDefinitionsWithCapability(_provider.CapabilityCredentialHelper) {
 				token, tokenErr := loadProviderToken(profileName, def, p)
 				if tokenErr != nil || token.AccessToken == "" {
 					continue
 				}
-				if sshPubKey != "" && def.Capabilities.Has(providerpkg.CapabilitySSHKeys) {
+				if sshPubKey != "" && def.Capabilities.Has(_provider.CapabilitySSHKeys) {
 					deleted, delErr := deleteProviderSSHKey(ctx, def, token, sshPubKey)
 					if delErr != nil {
-						ui.Warning("Could not delete SSH key from %s: %v", def.DisplayName, delErr)
+						_ui.Warning("Could not delete SSH key from %s: %v", def.DisplayName, delErr)
 					} else if deleted {
 						sshDeletedFromProviders = append(sshDeletedFromProviders, def.DisplayName)
 					}
 				}
 
-				if p.GPG != nil && p.GPG.KeyID != "" && def.Capabilities.Has(providerpkg.CapabilityGPGKeys) {
+				if p.GPG != nil && p.GPG.KeyID != "" && def.Capabilities.Has(_provider.CapabilityGPGKeys) {
 					deleted, delErr := deleteProviderGPGKey(ctx, def, token, p.GPG.KeyID)
 					if delErr != nil {
-						ui.Warning("Could not delete GPG key from %s: %v", def.DisplayName, delErr)
+						_ui.Warning("Could not delete GPG key from %s: %v", def.DisplayName, delErr)
 					} else if deleted {
 						gpgDeletedFromProviders = append(gpgDeletedFromProviders, def.DisplayName)
 					}
 				}
 
-				if def.ID == providerpkg.GitHubID {
+				if def.ID == _provider.GitHubID {
 					removedToken := false
 					if delErr := deleteProviderToken(profileName, def, p); delErr == nil {
 						removedToken = true
@@ -625,10 +625,10 @@ func newProfileDeleteCmd() *cobra.Command {
 						removedToken = true
 					}
 					if removedToken {
-						ui.Success("%s token removed", def.DisplayName)
+						_ui.Success("%s token removed", def.DisplayName)
 					}
 				} else if delErr := deleteProviderToken(profileName, def, p); delErr == nil {
-					ui.Success("%s token removed", def.DisplayName)
+					_ui.Success("%s token removed", def.DisplayName)
 				}
 			}
 
@@ -645,11 +645,11 @@ func newProfileDeleteCmd() *cobra.Command {
 				}
 				if removedAny || len(sshDeletedFromProviders) > 0 {
 					if len(sshDeletedFromProviders) > 0 {
-						ui.Success("SSH key removed (local + %s)", strings.Join(sshDeletedFromProviders, ", "))
+						_ui.Success("SSH key removed (local + %s)", strings.Join(sshDeletedFromProviders, ", "))
 					} else {
-						ui.Success("SSH key removed (local)")
+						_ui.Success("SSH key removed (local)")
 					}
-					ui.Detail("Key", privKey)
+					_ui.Detail("Key", privKey)
 				}
 				ctr.SSHManager.RemoveFromAgent(privKey)
 			}
@@ -659,18 +659,18 @@ func newProfileDeleteCmd() *cobra.Command {
 				gpgLocalDeleted := false
 				if ctr.GPGManager.IsInstalled() {
 					if err := ctr.GPGManager.Delete(p.GPG.KeyID); err != nil {
-						ui.Warning("Could not delete GPG key from keyring: %v", err)
+						_ui.Warning("Could not delete GPG key from keyring: %v", err)
 					} else {
 						gpgLocalDeleted = true
 					}
 				}
 				if gpgLocalDeleted || len(gpgDeletedFromProviders) > 0 {
 					if len(gpgDeletedFromProviders) > 0 {
-						ui.Success("GPG key removed (keyring + %s)", strings.Join(gpgDeletedFromProviders, ", "))
+						_ui.Success("GPG key removed (keyring + %s)", strings.Join(gpgDeletedFromProviders, ", "))
 					} else {
-						ui.Success("GPG key removed (keyring)")
+						_ui.Success("GPG key removed (keyring)")
 					}
-					ui.Detail("Key ID", p.GPG.KeyID)
+					_ui.Detail("Key ID", p.GPG.KeyID)
 				}
 			}
 
@@ -687,9 +687,9 @@ func newProfileExportCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			data, err := ctr.ProfileManager.Export(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
 			fmt.Fprint(os.Stdout, string(data))
@@ -704,17 +704,17 @@ func newProfileImportCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			data, err := os.ReadFile(args[0])
 			if err != nil {
-				ui.Error("could not read file: %s", args[0])
-				ui.Blank()
-				ui.Print("  Make sure the file path is correct.")
-				ui.Print("  To export a profile: gcm profile export <name> > file.yaml")
+				_ui.Error("could not read file: %s", args[0])
+				_ui.Blank()
+				_ui.Print("  Make sure the file path is correct.")
+				_ui.Print("  To export a profile: gcm profile export <name> > file.yaml")
 				return fmt.Errorf("could not read file %q: %w", args[0], err)
 			}
 			p, err := ctr.ProfileManager.Import(data)
 			if err != nil {
 				return err
 			}
-			ui.Success("Profile %q imported", p.Name)
+			_ui.Success("Profile %q imported", p.Name)
 			return nil
 		},
 	}
@@ -726,19 +726,19 @@ func newProfileDiffCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			p1, err := ctr.ProfileManager.Get(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
 			p2, err := ctr.ProfileManager.Get(args[1])
 			if err != nil {
-				ui.Error("profile %q not found", args[1])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[1])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[1])
 			}
-			ui.Header("Comparing: %s vs %s", args[0], args[1])
+			_ui.Header("Comparing: %s vs %s", args[0], args[1])
 			diffField("Name", p1.Git.User.Name, p2.Git.User.Name, args[0], args[1])
 			diffField("Email", p1.Git.User.Email, p2.Git.User.Email, args[0], args[1])
 			sshP1, sshP2 := "", ""
@@ -756,21 +756,21 @@ func newProfileDiffCmd() *cobra.Command {
 
 func diffField(label, v1, v2, n1, n2 string) {
 	if v1 != v2 {
-		ui.Print("\n%s:", label)
-		ui.Detail(n1, v1)
-		ui.Detail(n2, v2)
+		_ui.Print("\n%s:", label)
+		_ui.Detail(n1, v1)
+		_ui.Detail(n2, v2)
 	}
 }
 
-func promptProviderAccountUsernames(p *profile.Profile) error {
-	defs := providerDefinitionsWithCapability(providerpkg.CapabilityCredentialHelper)
+func promptProviderAccountUsernames(p *_profile.Profile) error {
+	defs := providerDefinitionsWithCapability(_provider.CapabilityCredentialHelper)
 	if len(defs) == 0 {
-		ui.Info("No providers are configured yet.")
+		_ui.Info("No providers are configured yet.")
 		return nil
 	}
 
 	options := []string{"Skip provider account"}
-	byOption := make(map[string]providerpkg.Definition, len(defs))
+	byOption := make(map[string]_provider.Definition, len(defs))
 	for _, def := range defs {
 		option := providerOption(def)
 		options = append(options, option)
@@ -778,10 +778,10 @@ func promptProviderAccountUsernames(p *profile.Profile) error {
 	}
 
 	currentLabel := "none"
-	if currentDef, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper); ok {
+	if currentDef, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper); ok {
 		currentLabel = currentDef.DisplayName
 	}
-	choice, err := ui.AskSelect(fmt.Sprintf("Provider for this profile (current: %s):", currentLabel), options)
+	choice, err := _ui.AskSelect(fmt.Sprintf("Provider for this profile (current: %s):", currentLabel), options)
 	if err != nil {
 		return err
 	}
@@ -789,23 +789,23 @@ func promptProviderAccountUsernames(p *profile.Profile) error {
 		oldState := cloneProfileProviderState(p)
 		cleanupDefs := providerDefinitionsToClean(oldState, "")
 		if len(cleanupDefs) > 0 {
-			ui.Warning("Removing provider from profile %q: %s", p.Name, providerNames(cleanupDefs))
-			ui.Print("  GCM will remove stored tokens, cached credentials, and uploaded keys when possible.")
-			confirm, confirmErr := ui.AskConfirm("Continue and remove provider data?", false)
+			_ui.Warning("Removing provider from profile %q: %s", p.Name, providerNames(cleanupDefs))
+			_ui.Print("  GCM will remove stored tokens, cached credentials, and uploaded keys when possible.")
+			confirm, confirmErr := _ui.AskConfirm("Continue and remove provider data?", false)
 			if confirmErr != nil {
 				return confirmErr
 			}
 			if !confirm {
-				ui.Info("Provider removal cancelled")
+				_ui.Info("Provider removal cancelled")
 				return nil
 			}
 			cleanupProviderData(context.Background(), p.Name, oldState, cleanupDefs)
 		}
 		clearAllProfileProviderAccounts(p)
 		if migrated, migErr := migrateProfileSSHKeyPathToProvider(p.Name, p); migErr != nil {
-			ui.Warning("Could not rename SSH key after provider removal: %v", migErr)
+			_ui.Warning("Could not rename SSH key after provider removal: %v", migErr)
 		} else if migrated {
-			ui.Detail("SSH Key Renamed", p.SSH.KeyPath)
+			_ui.Detail("SSH Key Renamed", p.SSH.KeyPath)
 		}
 		return nil
 	}
@@ -816,42 +816,42 @@ func promptProviderAccountUsernames(p *profile.Profile) error {
 	if account.Username != "" {
 		prompt = fmt.Sprintf("%s username [%s]:", def.DisplayName, account.Username)
 	}
-	username, err := ui.AskString(prompt, account.Username)
+	username, err := _ui.AskString(prompt, account.Username)
 	if err != nil {
 		return err
 	}
 	if ok, err := applyProfileProviderTransition(context.Background(), p.Name, p, def, username, account.AuthMethod, true, nil); err != nil {
 		return err
 	} else if !ok {
-		ui.Info("Provider change cancelled")
+		_ui.Info("Provider change cancelled")
 	}
 	return nil
 }
 
-func printProfileProviderAccounts(p *profile.Profile) {
+func printProfileProviderAccounts(p *_profile.Profile) {
 	if profileHasMultipleProviders(p) {
-		ui.SubHeader("Provider Account")
-		ui.Warning("Profile has multiple provider accounts. Run: gcm profile edit %s -i", p.Name)
+		_ui.SubHeader("Provider Account")
+		_ui.Warning("Profile has multiple provider accounts. Run: gcm profile edit %s -i", p.Name)
 		return
 	}
-	def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper)
+	def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper)
 	if !ok {
 		return
 	}
 	account := providerAccountForProfile(p, def.ID)
-	ui.SubHeader("Provider Account")
-	ui.Detail("Provider", def.DisplayName)
+	_ui.SubHeader("Provider Account")
+	_ui.Detail("Provider", def.DisplayName)
 	if account.Username != "" {
-		ui.Detail("Username", account.Username)
+		_ui.Detail("Username", account.Username)
 	}
 }
 
-func printProfileProviderAccountSummary(p *profile.Profile) {
+func printProfileProviderAccountSummary(p *_profile.Profile) {
 	if profileHasMultipleProviders(p) {
-		ui.Detail("Provider", ui.Yellow("multiple"))
+		_ui.Detail("Provider", _ui.Yellow("multiple"))
 		return
 	}
-	def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper)
+	def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper)
 	if !ok {
 		return
 	}
@@ -860,5 +860,5 @@ func printProfileProviderAccountSummary(p *profile.Profile) {
 	if account.Username != "" {
 		providerText = fmt.Sprintf("%s (%s)", def.DisplayName, account.Username)
 	}
-	ui.Detail("Provider", providerText)
+	_ui.Detail("Provider", providerText)
 }

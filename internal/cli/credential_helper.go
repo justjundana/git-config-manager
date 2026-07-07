@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	githubpkg "github.com/justjundana/git-config-manager/internal/github"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_github "github.com/justjundana/git-config-manager/internal/github"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // credentialHelperTimeout bounds git-config operations to prevent hangs.
@@ -81,7 +81,7 @@ func credentialHelperGet(_ *cobra.Command, _ []string) error {
 	}
 
 	def, ok := ctr.ProviderRegistry.ResolveHost(host)
-	if !ok || !def.Capabilities.Has(providerpkg.CapabilityCredentialHelper) {
+	if !ok || !def.Capabilities.Has(_provider.CapabilityCredentialHelper) {
 		return nil // Not our domain — let other helpers handle it
 	}
 
@@ -110,10 +110,10 @@ func credentialHelperGet(_ *cobra.Command, _ []string) error {
 
 	// Sanitize all output values to prevent credential protocol injection
 	// (newlines could inject additional key=value pairs).
-	protocol = githubpkg.SanitizeCredentialField(protocol)
-	host = githubpkg.SanitizeCredentialField(host)
-	username = githubpkg.SanitizeCredentialField(username)
-	password := githubpkg.SanitizeCredentialField(token.AccessToken)
+	protocol = _github.SanitizeCredentialField(protocol)
+	host = _github.SanitizeCredentialField(host)
+	username = _github.SanitizeCredentialField(username)
+	password := _github.SanitizeCredentialField(token.AccessToken)
 
 	// Output credentials in git credential protocol format
 	fmt.Fprintf(os.Stdout, "protocol=%s\n", protocol)
@@ -143,7 +143,7 @@ func parseCredentialInput() map[string]string {
 // IsCredentialHelperConfigured checks whether GCM is registered for GitHub hosts.
 func IsCredentialHelperConfigured() bool {
 	servers := []string{"https://github.com"}
-	if def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID); ok {
+	if def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID); ok {
 		servers = credentialHelperServersFor(def)
 	}
 	for _, server := range servers {
@@ -224,7 +224,7 @@ func credentialHelperServers() []string {
 	seen := make(map[string]bool)
 	servers := make([]string, 0)
 	for _, def := range ctr.ProviderRegistry.All() {
-		if !def.Capabilities.Has(providerpkg.CapabilityCredentialHelper) {
+		if !def.Capabilities.Has(_provider.CapabilityCredentialHelper) {
 			continue
 		}
 		for _, server := range credentialHelperServersFor(def) {
@@ -238,10 +238,10 @@ func credentialHelperServers() []string {
 	return servers
 }
 
-func credentialHelperServersFor(def providerpkg.Definition) []string {
+func credentialHelperServersFor(def _provider.Definition) []string {
 	servers := make([]string, 0, len(def.GitHosts))
 	for _, host := range def.GitHosts {
-		if normalized := providerpkg.NormalizeHost(host); normalized != "" {
+		if normalized := _provider.NormalizeHost(host); normalized != "" {
 			servers = append(servers, "https://"+normalized)
 		}
 	}

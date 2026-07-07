@@ -4,8 +4,8 @@ package auth
 import (
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 // State describes the resolved authentication state for a profile/provider pair.
@@ -66,7 +66,7 @@ type CredentialStatus struct {
 	AuthMethod string                   `json:"auth_method,omitempty"`
 	Error      string                   `json:"error,omitempty"`
 	Helpers    []CredentialHelperStatus `json:"helpers,omitempty"`
-	Token      providerpkg.TokenSet     `json:"-"`
+	Token      _provider.TokenSet       `json:"-"`
 	Secret     string                   `json:"-"`
 }
 
@@ -105,7 +105,7 @@ type Recommendation struct {
 type ProfileAuthStatus struct {
 	GeneratedAt           time.Time                `json:"generated_at"`
 	Profile               string                   `json:"profile"`
-	Provider              providerpkg.ProviderID   `json:"provider"`
+	Provider              _provider.ProviderID     `json:"provider"`
 	ProviderName          string                   `json:"provider_name"`
 	Host                  string                   `json:"host"`
 	State                 State                    `json:"state"`
@@ -124,8 +124,8 @@ type ProfileAuthStatus struct {
 // ResolveRequest controls a single auth resolution.
 type ResolveRequest struct {
 	ProfileName     string
-	Profile         *profile.Profile
-	Provider        providerpkg.Definition
+	Profile         *_profile.Profile
+	Provider        _provider.Definition
 	Verify          bool
 	InspectExternal bool
 	InspectSSH      bool

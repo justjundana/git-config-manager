@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
+	_config "github.com/justjundana/git-config-manager/internal/config"
 )
 
 func setupTestLogger(t *testing.T, enabled bool) *Logger {
@@ -18,7 +18,7 @@ func setupTestLogger(t *testing.T, enabled bool) *Logger {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = enabled
 	l := NewLogger(cfg)
 	l.logDir = filepath.Join(tmp, "logs")
@@ -28,7 +28,7 @@ func setupTestLogger(t *testing.T, enabled bool) *Logger {
 func TestNewLogger(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = true
 	l := NewLogger(cfg)
 	if l == nil {
@@ -286,7 +286,7 @@ func TestWrite_MkdirAllError(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = true
 	l := NewLogger(cfg)
 	// Set logDir to an impossible path so MkdirAll fails.

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/tokenstore"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_tokenstore "github.com/justjundana/git-config-manager/internal/tokenstore"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // maxResponseSize caps how much data we read from GitHub API responses to
@@ -36,16 +36,16 @@ var pollTimeout = 15 * time.Minute
 
 // Client handles GitHub API operations.
 type Client struct {
-	cfg        *config.Config
-	log        *logger.Logger
+	cfg        *_config.Config
+	log        *_logger.Logger
 	apiURL     string
 	token      string
 	httpClient *http.Client
-	tokenStore *tokenstore.TokenStore
+	tokenStore *_tokenstore.TokenStore
 }
 
 // NewClient creates a new GitHub client.
-func NewClient(cfg *config.Config, log *logger.Logger, tokenStore *tokenstore.TokenStore) *Client {
+func NewClient(cfg *_config.Config, log *_logger.Logger, tokenStore *_tokenstore.TokenStore) *Client {
 	return &Client{
 		cfg:    cfg,
 		log:    log,
@@ -327,12 +327,12 @@ func (c *Client) ClearGitCredentials(server string) error {
 	if err := cmd.Run(); err != nil {
 		// Don't fail hard — git credential reject may not be available
 		c.log.Debug("git credential reject returned error (non-fatal)",
-			logger.F("error", err.Error()),
-			logger.F("stderr", stderr.String()))
+			_logger.F("error", err.Error()),
+			_logger.F("stderr", stderr.String()))
 		return nil
 	}
 
-	c.log.Debug("Git credentials cleared", logger.F("host", host))
+	c.log.Debug("Git credentials cleared", _logger.F("host", host))
 	return nil
 }
 
@@ -377,12 +377,12 @@ func (c *Client) StoreGitCredentials(server, username, token string) error {
 
 	if err := cmd.Run(); err != nil {
 		c.log.Debug("git credential approve returned error (non-fatal)",
-			logger.F("error", err.Error()),
-			logger.F("stderr", stderr.String()))
+			_logger.F("error", err.Error()),
+			_logger.F("stderr", stderr.String()))
 		return nil
 	}
 
-	c.log.Debug("Git credentials stored", logger.F("host", host), logger.F("username", username))
+	c.log.Debug("Git credentials stored", _logger.F("host", host), _logger.F("username", username))
 	return nil
 }
 
@@ -414,19 +414,19 @@ func (c *Client) SetGitCredentialUsername(server, username string) error {
 	if err := cmd.Run(); err != nil {
 		// --unset returns exit code 5 if the key doesn't exist — not an error
 		if username == "" {
-			c.log.Debug("git config --unset (non-fatal)", logger.F("key", key))
+			c.log.Debug("git config --unset (non-fatal)", _logger.F("key", key))
 			return nil
 		}
 		c.log.Debug("git config set credential.username failed (non-fatal)",
-			logger.F("error", err.Error()),
-			logger.F("stderr", stderr.String()))
+			_logger.F("error", err.Error()),
+			_logger.F("stderr", stderr.String()))
 		return nil
 	}
 
 	if username != "" {
-		c.log.Debug("Git credential username set", logger.F("server", server), logger.F("username", username))
+		c.log.Debug("Git credential username set", _logger.F("server", server), _logger.F("username", username))
 	} else {
-		c.log.Debug("Git credential username unset", logger.F("server", server))
+		c.log.Debug("Git credential username unset", _logger.F("server", server))
 	}
 	return nil
 }

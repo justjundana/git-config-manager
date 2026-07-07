@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	"github.com/justjundana/git-config-manager/internal/tokenstore"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_tokenstore "github.com/justjundana/git-config-manager/internal/tokenstore"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newValidateCmd() *cobra.Command {
@@ -34,9 +34,9 @@ func newValidateCmd() *cobra.Command {
 
 			p, err := ctr.ProfileManager.Get(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
 			validateAndPrint(p)
@@ -45,29 +45,29 @@ func newValidateCmd() *cobra.Command {
 	}
 }
 
-func validateAndPrint(p *profile.Profile) {
-	result := profile.ValidateDeep(p)
+func validateAndPrint(p *_profile.Profile) {
+	result := _profile.ValidateDeep(p)
 
-	icon := ui.Green(ui.IconSuccess)
+	icon := _ui.Green(_ui.IconSuccess)
 	if !result.IsValid() {
-		icon = ui.Red(ui.IconError)
+		icon = _ui.Red(_ui.IconError)
 	}
 
-	ui.Print("\n%s Profile: %s", icon, ui.Bold(p.Name))
+	_ui.Print("\n%s Profile: %s", icon, _ui.Bold(p.Name))
 
 	for _, issue := range result.Info {
-		ui.Print("  %s %s: %s", ui.Green(ui.IconSuccess), issue.Category, issue.Message)
+		_ui.Print("  %s %s: %s", _ui.Green(_ui.IconSuccess), issue.Category, issue.Message)
 	}
 	for _, issue := range result.Warnings {
-		ui.Print("  %s %s: %s", ui.Yellow(ui.IconWarning), issue.Category, issue.Message)
+		_ui.Print("  %s %s: %s", _ui.Yellow(_ui.IconWarning), issue.Category, issue.Message)
 		if issue.Suggestion != "" {
-			ui.Print("      %s", ui.Dim(issue.Suggestion))
+			_ui.Print("      %s", _ui.Dim(issue.Suggestion))
 		}
 	}
 	for _, issue := range result.Errors {
-		ui.Print("  %s %s: %s", ui.Red(ui.IconError), issue.Category, issue.Message)
+		_ui.Print("  %s %s: %s", _ui.Red(_ui.IconError), issue.Category, issue.Message)
 		if issue.Suggestion != "" {
-			ui.Print("      %s", ui.Dim(issue.Suggestion))
+			_ui.Print("      %s", _ui.Dim(issue.Suggestion))
 		}
 	}
 }
@@ -80,92 +80,92 @@ func newDoctorCmd() *cobra.Command {
 		Use:   "doctor",
 		Short: "Check system health and dependencies",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			ui.Header("%s GCM System Health Check", ui.IconDoctor)
-			ui.Blank()
+			_ui.Header("%s GCM System Health Check", _ui.IconDoctor)
+			_ui.Blank()
 
 			// System info
-			ui.SubHeader("System")
-			ui.Print("  %s OS: %s/%s", ui.Green(ui.IconSuccess), runtime.GOOS, runtime.GOARCH)
-			ui.Print("  %s Go: %s", ui.Green(ui.IconSuccess), runtime.Version())
+			_ui.SubHeader("System")
+			_ui.Print("  %s OS: %s/%s", _ui.Green(_ui.IconSuccess), runtime.GOOS, runtime.GOARCH)
+			_ui.Print("  %s Go: %s", _ui.Green(_ui.IconSuccess), runtime.Version())
 
 			// Git
-			ui.SubHeader("Dependencies")
+			_ui.SubHeader("Dependencies")
 			checkCommand("Git", "git", "--version")
 			checkCommand("SSH", "ssh", "-V")
 			checkCommand("GPG", ctr.Config.Advanced.GPGCommand, "--version")
 
 			// SSH agent
-			ui.SubHeader("Services")
+			_ui.SubHeader("Services")
 			checkSSHAgent()
 
 			// Token storage
-			ui.SubHeader("Token Storage")
-			if tokenstore.IsKeychainAvailable() {
-				ui.Print("  %s OS Keychain: available", ui.Green(ui.IconSuccess))
+			_ui.SubHeader("Token Storage")
+			if _tokenstore.IsKeychainAvailable() {
+				_ui.Print("  %s OS Keychain: available", _ui.Green(_ui.IconSuccess))
 			} else {
-				ui.Print("  %s OS Keychain: unavailable on %s/%s", ui.Yellow(ui.IconWarning), runtime.GOOS, runtime.GOARCH)
+				_ui.Print("  %s OS Keychain: unavailable on %s/%s", _ui.Yellow(_ui.IconWarning), runtime.GOOS, runtime.GOARCH)
 				if ctr.Config.Security.EncryptTokens && ctr.Config.Security.MasterPassword {
-					ui.Print("    Using encrypted file storage (master password)")
+					_ui.Print("    Using encrypted file storage (master password)")
 				} else if ctr.Config.Security.AllowPlaintextTokens {
-					ui.Print("    Using plaintext file storage")
+					_ui.Print("    Using plaintext file storage")
 				} else {
-					ui.Print("    No token storage backend configured")
-					ui.Print("    Fix: set security.encrypt_tokens + security.master_password in config")
+					_ui.Print("    No token storage backend configured")
+					_ui.Print("    Fix: set security.encrypt_tokens + security.master_password in config")
 				}
 			}
 
 			// Config
-			ui.SubHeader("Configuration")
+			_ui.SubHeader("Configuration")
 			configPath := "~/.gcm/config.yaml"
-			ui.Print("  %s Config: %s", ui.Green(ui.IconSuccess), configPath)
+			_ui.Print("  %s Config: %s", _ui.Green(_ui.IconSuccess), configPath)
 
 			profiles, err := ctr.ProfileManager.List()
 			if err != nil {
-				ui.Print("  %s Profiles: error reading", ui.Red(ui.IconError))
+				_ui.Print("  %s Profiles: error reading", _ui.Red(_ui.IconError))
 			} else {
-				ui.Print("  %s Profiles: %d found", ui.Green(ui.IconSuccess), len(profiles))
+				_ui.Print("  %s Profiles: %d found", _ui.Green(_ui.IconSuccess), len(profiles))
 			}
 
 			currentName, currentScope, _ := ctr.ProfileSwitcher.Current()
 			if currentName != "" {
-				ui.Print("  %s Active: %s (%s)", ui.Green(ui.IconSuccess), currentName, currentScope.String())
+				_ui.Print("  %s Active: %s (%s)", _ui.Green(_ui.IconSuccess), currentName, currentScope.String())
 			} else {
-				ui.Print("  %s No active profile", ui.Yellow(ui.IconWarning))
+				_ui.Print("  %s No active profile", _ui.Yellow(_ui.IconWarning))
 			}
 
 			// Shell
-			ui.SubHeader("Shell Integration")
+			_ui.SubHeader("Shell Integration")
 			shellType := ctr.ShellManager.DetectShell()
-			ui.Print("  %s Detected: %s", ui.Green(ui.IconSuccess), string(shellType))
+			_ui.Print("  %s Detected: %s", _ui.Green(_ui.IconSuccess), string(shellType))
 			if shellType != "unknown" {
 				if installed, configFile := ctr.ShellManager.IsInstalled(shellType); installed {
-					ui.Print("  %s Hooks installed in %s", ui.Green(ui.IconSuccess), configFile)
-					ui.Print("    Auto-switching and prompt integration are active")
+					_ui.Print("  %s Hooks installed in %s", _ui.Green(_ui.IconSuccess), configFile)
+					_ui.Print("    Auto-switching and prompt integration are active")
 				} else {
-					ui.Print("  %s Shell hooks not installed", ui.Yellow(ui.IconWarning))
-					ui.Print("    Auto-switching is disabled. Fix: run %s", ui.Cyan("gcm init"))
+					_ui.Print("  %s Shell hooks not installed", _ui.Yellow(_ui.IconWarning))
+					_ui.Print("    Auto-switching is disabled. Fix: run %s", _ui.Cyan("gcm init"))
 				}
 			}
 
 			// Credential Helper
-			ui.SubHeader("Credential Helper")
+			_ui.SubHeader("Credential Helper")
 			missingHelpers := missingCredentialHelperServers()
 			if len(missingHelpers) == 0 {
-				ui.Print("  %s GCM registered as git credential helper for configured provider hosts", ui.Green(ui.IconSuccess))
-				ui.Print("    Credentials are served from GCM's encrypted store (immune to external logout)")
+				_ui.Print("  %s GCM registered as git credential helper for configured provider hosts", _ui.Green(_ui.IconSuccess))
+				_ui.Print("    Credentials are served from GCM's encrypted store (immune to external logout)")
 			} else {
-				ui.Print("  %s GCM is missing credential helper registration for %d provider host(s)", ui.Yellow(ui.IconWarning), len(missingHelpers))
+				_ui.Print("  %s GCM is missing credential helper registration for %d provider host(s)", _ui.Yellow(_ui.IconWarning), len(missingHelpers))
 				for _, server := range missingHelpers {
-					ui.Print("    %s", server)
+					_ui.Print("    %s", server)
 				}
-				ui.Print("    Git credentials use the system keychain (can be affected by VS Code logout, etc.)")
-				ui.Print("    Fix: run %s to register GCM as the credential helper", ui.Cyan("gcm repair --fix"))
+				_ui.Print("    Git credentials use the system keychain (can be affected by VS Code logout, etc.)")
+				_ui.Print("    Fix: run %s to register GCM as the credential helper", _ui.Cyan("gcm repair --fix"))
 			}
 
-			ui.Blank()
-			ui.Success("Health check complete")
+			_ui.Blank()
+			_ui.Success("Health check complete")
 			if fix {
-				ui.Blank()
+				_ui.Blank()
 				return runRepair(repairOptions{fix: true, yes: yes})
 			}
 			return nil
@@ -193,11 +193,11 @@ func checkCommand(label, cmd string, args ...string) {
 	fullCmd := exec.CommandContext(ctx, cmd, args...)
 	out, err := fullCmd.CombinedOutput()
 	if err != nil {
-		ui.Print("  %s %s: not installed", ui.Red(ui.IconError), label)
+		_ui.Print("  %s %s: not installed", _ui.Red(_ui.IconError), label)
 		return
 	}
 	ver := strings.TrimSpace(strings.Split(string(out), "\n")[0])
-	ui.Print("  %s %s: %s", ui.Green(ui.IconSuccess), label, ver)
+	_ui.Print("  %s %s: %s", _ui.Green(_ui.IconSuccess), label, ver)
 }
 
 func checkSSHAgent() {
@@ -209,15 +209,15 @@ func checkSSHAgent() {
 
 	if err != nil {
 		if strings.Contains(output, "Could not open") || strings.Contains(output, "not running") {
-			ui.Print("  %s SSH Agent: not running", ui.Red(ui.IconError))
+			_ui.Print("  %s SSH Agent: not running", _ui.Red(_ui.IconError))
 			return
 		}
 	}
 
 	if strings.Contains(output, "no identities") {
-		ui.Print("  %s SSH Agent: running (no keys loaded)", ui.Yellow(ui.IconWarning))
+		_ui.Print("  %s SSH Agent: running (no keys loaded)", _ui.Yellow(_ui.IconWarning))
 	} else {
 		lines := strings.Split(output, "\n")
-		ui.Print("  %s SSH Agent: running (%d keys)", ui.Green(ui.IconSuccess), len(lines))
+		_ui.Print("  %s SSH Agent: running (%d keys)", _ui.Green(_ui.IconSuccess), len(lines))
 	}
 }

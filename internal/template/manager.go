@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
 	"gopkg.in/yaml.v3"
 )
@@ -52,13 +52,13 @@ type TemplateMetadata struct {
 
 // Manager handles template operations.
 type Manager struct {
-	cfg     *config.Config
-	fileSvc *fileSvc.Service
-	log     *logger.Logger
+	cfg     *_config.Config
+	fileSvc *_file.Service
+	log     *_logger.Logger
 }
 
 // NewManager creates a new template manager.
-func NewManager(cfg *config.Config, fs *fileSvc.Service, log *logger.Logger) *Manager {
+func NewManager(cfg *_config.Config, fs *_file.Service, log *_logger.Logger) *Manager {
 	return &Manager{cfg: cfg, fileSvc: fs, log: log}
 }
 
@@ -142,7 +142,7 @@ func (m *Manager) List() ([]*Template, error) {
 		name := strings.TrimSuffix(filepath.Base(f), ".yaml")
 		t, err := m.Get(name)
 		if err != nil {
-			m.log.Warn("Skipping invalid template", logger.F("file", f))
+			m.log.Warn("Skipping invalid template", _logger.F("file", f))
 			continue
 		}
 		templates = append(templates, t)

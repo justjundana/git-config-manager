@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newGitLabCmd() *cobra.Command {
@@ -27,10 +27,10 @@ func newGitLabCmd() *cobra.Command {
 	return cmd
 }
 
-func gitLabProviderDefinition() (providerpkg.Definition, error) {
-	def, ok := ctr.ProviderRegistry.Get(providerpkg.GitLabID)
+func gitLabProviderDefinition() (_provider.Definition, error) {
+	def, ok := ctr.ProviderRegistry.Get(_provider.GitLabID)
 	if !ok {
-		return providerpkg.Definition{}, fmt.Errorf("GitLab provider is not configured")
+		return _provider.Definition{}, fmt.Errorf("GitLab provider is not configured")
 	}
 	return def, nil
 }
@@ -70,12 +70,12 @@ Examples:
 					return fmt.Errorf("could not read token from input\n\n  Make sure you're piping a valid token:\n  echo \"$GITLAB_TOKEN\" | gcm gitlab login %s", profileName)
 				}
 			} else {
-				ui.Header("%s GitLab Login for Profile: %s", ui.IconKey, profileName)
-				ui.Blank()
-				ui.Print("Create a GitLab Personal Access Token with scopes: api, read_user, read_repository, write_repository")
-				ui.Print("Provider: %s", ui.Cyan(def.WebURL))
-				ui.Blank()
-				token, err = ui.AskPassword("Enter token")
+				_ui.Header("%s GitLab Login for Profile: %s", _ui.IconKey, profileName)
+				_ui.Blank()
+				_ui.Print("Create a GitLab Personal Access Token with scopes: api, read_user, read_repository, write_repository")
+				_ui.Print("Provider: %s", _ui.Cyan(def.WebURL))
+				_ui.Blank()
+				token, err = _ui.AskPassword("Enter token")
 				if err != nil {
 					return fmt.Errorf("could not read token input")
 				}
@@ -85,59 +85,59 @@ Examples:
 				return fmt.Errorf("token cannot be empty")
 			}
 
-			tokenSet := providerpkg.TokenSet{AccessToken: token, AuthMethod: providerpkg.AuthMethodPAT, TokenType: "pat"}
+			tokenSet := _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodPAT, TokenType: "pat"}
 			ctr.GitLabClient.SetTokenSet(tokenSet)
 
-			sp := ui.NewSpinner("Verifying token with GitLab...")
+			sp := _ui.NewSpinner("Verifying token with GitLab...")
 			sp.Start()
 			user, err := ctr.GitLabClient.GetUser(cmd.Context())
 			if err != nil {
 				sp.StopError("Token is not valid")
-				ui.Blank()
-				ui.Print("The token was rejected by GitLab at %s.", def.APIURL)
-				ui.Print("Common causes: missing scope, expired token, revoked token, or wrong self-managed URL.")
+				_ui.Blank()
+				_ui.Print("The token was rejected by GitLab at %s.", def.APIURL)
+				_ui.Print("Common causes: missing scope, expired token, revoked token, or wrong self-managed URL.")
 				return fmt.Errorf("GitLab token verification failed")
 			}
 			sp.Stop("Token verified!")
 
-			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, profileConfig, def, user.Username, providerpkg.AuthMethodPAT, !stdinPiped, func() error {
+			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, profileConfig, def, user.Username, _provider.AuthMethodPAT, !stdinPiped, func() error {
 				return saveProviderToken(profileName, def, profileConfig, tokenSet)
 			})
 			if transitionErr != nil {
-				ctr.AuditLogger.Log(audit.ActionProviderLogin, profileName,
-					map[string]string{"provider": string(providerpkg.GitLabID), "method": "pat"}, transitionErr)
+				ctr.AuditLogger.Log(_audit.ActionProviderLogin, profileName,
+					map[string]string{"provider": string(_provider.GitLabID), "method": "pat"}, transitionErr)
 				return transitionErr
 			}
 			if !ok {
-				ui.Info("Provider change cancelled")
+				_ui.Info("Provider change cancelled")
 				return nil
 			}
 
 			if err := ctr.ProfileManager.Update(profileConfig); err != nil {
-				ui.Warning("GitLab token was saved, but profile metadata could not be updated: %v", err)
+				_ui.Warning("GitLab token was saved, but profile metadata could not be updated: %v", err)
 			}
 
-			ctr.AuditLogger.Log(audit.ActionProviderLogin, profileName,
-				map[string]string{"provider": string(providerpkg.GitLabID), "user": user.Username, "method": "pat"}, nil)
+			ctr.AuditLogger.Log(_audit.ActionProviderLogin, profileName,
+				map[string]string{"provider": string(_provider.GitLabID), "user": user.Username, "method": "pat"}, nil)
 
-			ui.Blank()
+			_ui.Blank()
 			if user.Name != "" {
-				ui.Success("Logged in to GitLab as %s (%s)", ui.Bold(user.Username), user.Name)
+				_ui.Success("Logged in to GitLab as %s (%s)", _ui.Bold(user.Username), user.Name)
 			} else {
-				ui.Success("Logged in to GitLab as %s", ui.Bold(user.Username))
+				_ui.Success("Logged in to GitLab as %s", _ui.Bold(user.Username))
 			}
 			if user.WebURL != "" {
-				ui.Detail("GitLab Profile", user.WebURL)
+				_ui.Detail("GitLab Profile", user.WebURL)
 			}
 
 			if isActiveProfile(profileName) {
 				configureGitCredentialsForProvider(profileName, profileConfig, def, tokenSet)
-				ui.Print("  Git credentials updated — git push/pull will use this GitLab account.")
+				_ui.Print("  Git credentials updated — git push/pull will use this GitLab account.")
 			} else {
-				ui.Blank()
-				ui.Print("  Note: This is not the active profile.")
-				ui.Print("  Git credentials will be updated when you switch to it:")
-				ui.Print("    gcm use %s", profileName)
+				_ui.Blank()
+				_ui.Print("  Note: This is not the active profile.")
+				_ui.Print("  Git credentials will be updated when you switch to it:")
+				_ui.Print("    gcm use %s", profileName)
 			}
 
 			activateAsGlobalIfFirst(profileName)
@@ -172,41 +172,41 @@ func newGitLabLogoutCmd() *cobra.Command {
 			}
 
 			if !isActiveProfile(profileName) && !forceLogout {
-				ui.Warning("Profile %q is not the active profile.", profileName)
-				confirm, askErr := ui.AskConfirm(fmt.Sprintf("Remove the GitLab token for %q?", profileName), false)
+				_ui.Warning("Profile %q is not the active profile.", profileName)
+				confirm, askErr := _ui.AskConfirm(fmt.Sprintf("Remove the GitLab token for %q?", profileName), false)
 				if askErr != nil || !confirm {
-					ui.Info("Cancelled.")
+					_ui.Info("Cancelled.")
 					return nil
 				}
 			}
 
 			hadStoredToken := providerTokenPresent(profileName, def, profileConfig)
 			if err := deleteProviderToken(profileName, def, profileConfig); err != nil {
-				ctr.AuditLogger.Log(audit.ActionProviderLogout, profileName,
-					map[string]string{"provider": string(providerpkg.GitLabID)}, err)
+				ctr.AuditLogger.Log(_audit.ActionProviderLogout, profileName,
+					map[string]string{"provider": string(_provider.GitLabID)}, err)
 				return fmt.Errorf("could not remove GitLab token for profile %q", profileName)
 			}
 
-			ctr.AuditLogger.Log(audit.ActionProviderLogout, profileName,
-				map[string]string{"provider": string(providerpkg.GitLabID)}, nil)
+			ctr.AuditLogger.Log(_audit.ActionProviderLogout, profileName,
+				map[string]string{"provider": string(_provider.GitLabID)}, nil)
 			if hadStoredToken {
-				ui.Success("GitLab token removed for profile %q", profileName)
+				_ui.Success("GitLab token removed for profile %q", profileName)
 			} else {
-				ui.Info("No GitLab token was stored for profile %q.", profileName)
+				_ui.Info("No GitLab token was stored for profile %q.", profileName)
 			}
 
 			if clearGitCreds && isActiveProfile(profileName) {
 				_ = ctr.GitHubClient.SetGitCredentialUsername(def.CredentialServer(), "")
 				if err := ctr.GitHubClient.ClearGitCredentials(def.CredentialServer()); err != nil {
-					ui.Warning("Git credentials could not be cleared automatically.")
+					_ui.Warning("Git credentials could not be cleared automatically.")
 				} else {
-					ui.Success("HTTPS Git credentials and username pin cleared for %s.", def.CredentialServer())
-					ui.Print("  SSH remotes and profile SSH keys are unchanged, so git may still work over SSH.")
+					_ui.Success("HTTPS Git credentials and username pin cleared for %s.", def.CredentialServer())
+					_ui.Print("  SSH remotes and profile SSH keys are unchanged, so git may still work over SSH.")
 				}
 			}
 
-			ui.Blank()
-			ui.Print("To re-authenticate later: gcm gitlab login %s", profileName)
+			_ui.Blank()
+			_ui.Print("To re-authenticate later: gcm gitlab login %s", profileName)
 			return nil
 		},
 	}
@@ -236,18 +236,18 @@ func newGitLabVerifyCmd() *cobra.Command {
 			}
 			token, err := loadProviderToken(profileName, def, profileConfig)
 			if err != nil {
-				ui.Print("Profile %q is not authenticated with GitLab yet.", profileName)
-				ui.Print("To authenticate: gcm gitlab login %s", profileName)
+				_ui.Print("Profile %q is not authenticated with GitLab yet.", profileName)
+				_ui.Print("To authenticate: gcm gitlab login %s", profileName)
 				return fmt.Errorf("profile %q is not authenticated with GitLab", profileName)
 			}
 			ctr.GitLabClient.SetTokenSet(token)
 			user, err := ctr.GitLabClient.VerifyToken(cmd.Context())
 			if err != nil {
-				ui.Print("The stored GitLab token for profile %q is no longer valid.", profileName)
-				ui.Print("To fix, re-authenticate: gcm gitlab login %s", profileName)
+				_ui.Print("The stored GitLab token for profile %q is no longer valid.", profileName)
+				_ui.Print("To fix, re-authenticate: gcm gitlab login %s", profileName)
 				return fmt.Errorf("GitLab token expired or revoked for profile %q", profileName)
 			}
-			ui.Success("Authenticated with GitLab as %s", ui.Bold(user.Username))
+			_ui.Success("Authenticated with GitLab as %s", _ui.Bold(user.Username))
 			return nil
 		},
 	}
@@ -273,8 +273,8 @@ func newGitLabUserCmd() *cobra.Command {
 			}
 			token, err := loadProviderToken(profileName, def, profileConfig)
 			if err != nil {
-				ui.Print("Profile %q is not authenticated with GitLab yet.", profileName)
-				ui.Print("To authenticate: gcm gitlab login %s", profileName)
+				_ui.Print("Profile %q is not authenticated with GitLab yet.", profileName)
+				_ui.Print("To authenticate: gcm gitlab login %s", profileName)
 				return fmt.Errorf("profile %q is not authenticated with GitLab", profileName)
 			}
 			ctr.GitLabClient.SetTokenSet(token)
@@ -282,11 +282,11 @@ func newGitLabUserCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("could not fetch GitLab user info for %q", profileName)
 			}
-			ui.Header("GitLab User: %s", user.Username)
-			ui.Detail("Name", user.Name)
-			ui.Detail("Email", user.Email)
-			ui.Detail("Public Email", user.PublicEmail)
-			ui.Detail("URL", user.WebURL)
+			_ui.Header("GitLab User: %s", user.Username)
+			_ui.Detail("Name", user.Name)
+			_ui.Detail("Email", user.Email)
+			_ui.Detail("Public Email", user.PublicEmail)
+			_ui.Detail("URL", user.WebURL)
 			return nil
 		},
 	}

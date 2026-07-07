@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
+	color "github.com/fatih/color"
 )
 
 // Icons used throughout the CLI.

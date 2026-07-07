@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 const defaultGitCredentialTimeout = 5 * time.Second
@@ -20,8 +20,8 @@ type CommandRunner func(ctx context.Context, stdin string, name string, args ...
 
 // ExternalInspector inspects and mutates non-GCM Git credentials.
 type ExternalInspector interface {
-	InspectGitCredential(ctx context.Context, def providerpkg.Definition, username string) (GitCredentialInspection, error)
-	RejectGitCredential(ctx context.Context, def providerpkg.Definition, username string) error
+	InspectGitCredential(ctx context.Context, def _provider.Definition, username string) (GitCredentialInspection, error)
+	RejectGitCredential(ctx context.Context, def _provider.Definition, username string) error
 }
 
 // GitCredentialInspection is the raw inspection result for Git credential helpers.
@@ -45,7 +45,7 @@ func NewGitCredentialInspector() *GitCredentialInspector {
 }
 
 // InspectGitCredential asks Git what credential would be used for the provider host.
-func (i *GitCredentialInspector) InspectGitCredential(ctx context.Context, def providerpkg.Definition, username string) (GitCredentialInspection, error) {
+func (i *GitCredentialInspector) InspectGitCredential(ctx context.Context, def _provider.Definition, username string) (GitCredentialInspection, error) {
 	server := strings.TrimRight(def.CredentialServer(), "/")
 	protocol, host, err := credentialProtocolHost(server)
 	if err != nil {
@@ -108,7 +108,7 @@ func (i *GitCredentialInspector) InspectGitCredential(ctx context.Context, def p
 }
 
 // RejectGitCredential asks Git's credential chain to erase a credential for the provider host.
-func (i *GitCredentialInspector) RejectGitCredential(ctx context.Context, def providerpkg.Definition, username string) error {
+func (i *GitCredentialInspector) RejectGitCredential(ctx context.Context, def _provider.Definition, username string) error {
 	server := strings.TrimRight(def.CredentialServer(), "/")
 	protocol, host, err := credentialProtocolHost(server)
 	if err != nil {
@@ -217,7 +217,7 @@ func credentialProtocolHost(server string) (string, string, error) {
 	if host == "" {
 		return "", "", fmt.Errorf("credential server %q has no host", server)
 	}
-	return protocol, providerpkg.NormalizeHost(host), nil
+	return protocol, _provider.NormalizeHost(host), nil
 }
 
 func parseCredentialOutput(output string) map[string]string {

@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"golang.org/x/term"
+	term "golang.org/x/term"
 )
 
 // ErrInterrupted is returned when the user cancels a prompt (Ctrl-C / EOF).

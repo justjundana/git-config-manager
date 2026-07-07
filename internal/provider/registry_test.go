@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
+	_config "github.com/justjundana/git-config-manager/internal/config"
 )
 
 func TestRegistry_DefaultProvidersResolveHosts(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	registry := NewRegistry(cfg)
 
 	githubDef, ok := registry.ResolveHost("github.com")
@@ -29,7 +29,7 @@ func TestRegistry_DefaultProvidersResolveHosts(t *testing.T) {
 }
 
 func TestRegistry_LegacyGitHubCustomAPIURLOverridesDefaultProviderHost(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.GitHub.APIURL = "https://github.company.test/api/v3"
 
 	registry := NewRegistry(cfg)
@@ -53,8 +53,8 @@ func TestRegistry_LegacyGitHubCustomAPIURLOverridesDefaultProviderHost(t *testin
 }
 
 func TestRegistry_ProviderGitHubConfigWinsOverDefaultLegacyBlock(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Providers["github"] = config.ProviderConfig{
+	cfg := _config.DefaultConfig()
+	cfg.Providers["github"] = _config.ProviderConfig{
 		Type:       "github",
 		APIURL:     "https://github.enterprise.test/api/v3",
 		WebURL:     "https://github.enterprise.test",
@@ -126,7 +126,7 @@ func TestDefinition_CredentialUsernameStrategies(t *testing.T) {
 }
 
 func TestRegistry_DefaultGitLabIsRegisteredWhenMissing(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	delete(cfg.Providers, "gitlab")
 
 	registry := NewRegistry(cfg)
@@ -140,8 +140,8 @@ func TestRegistry_DefaultGitLabIsRegisteredWhenMissing(t *testing.T) {
 }
 
 func TestRegistry_LegacyDefaultGitHubFillsMissingHostsFromProviderWebURL(t *testing.T) {
-	cfg := config.DefaultConfig()
-	cfg.Providers["github"] = config.ProviderConfig{
+	cfg := _config.DefaultConfig()
+	cfg.Providers["github"] = _config.ProviderConfig{
 		Type:       "github",
 		APIURL:     "",
 		WebURL:     "https://github.example.test",
@@ -207,7 +207,7 @@ func TestNormalizeHostBranches(t *testing.T) {
 }
 
 func TestDefinitionFromConfigUnknownProviderAndGitHubWebURLFallbacks(t *testing.T) {
-	def := definitionFromConfig(ProviderID("forgejo"), config.ProviderConfig{APIURL: "https://code.example.test/api"})
+	def := definitionFromConfig(ProviderID("forgejo"), _config.ProviderConfig{APIURL: "https://code.example.test/api"})
 	if def.DisplayName != "" || def.Type != "forgejo" || def.Capabilities != nil {
 		t.Fatalf("unknown provider def = %+v", def)
 	}
@@ -226,19 +226,19 @@ func TestLegacyGitHubConfigOverrideBranches(t *testing.T) {
 	if legacyGitHubConfigOverridesProvider(nil) {
 		t.Fatal("nil config should not override")
 	}
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.GitHub.APIURL = ""
 	if legacyGitHubConfigOverridesProvider(cfg) {
 		t.Fatal("empty legacy API should not override")
 	}
-	cfg = config.DefaultConfig()
+	cfg = _config.DefaultConfig()
 	delete(cfg.Providers, "github")
 	if !legacyGitHubConfigOverridesProvider(cfg) {
 		t.Fatal("missing providers.github should preserve legacy")
 	}
-	cfg = config.DefaultConfig()
+	cfg = _config.DefaultConfig()
 	cfg.GitHub.APIURL = "https://github.company.test/api/v3/"
-	cfg.Providers["github"] = config.ProviderConfig{APIURL: "https://api.github.com/"}
+	cfg.Providers["github"] = _config.ProviderConfig{APIURL: "https://api.github.com/"}
 	if !legacyGitHubConfigOverridesProvider(cfg) {
 		t.Fatal("custom legacy plus default provider should override")
 	}

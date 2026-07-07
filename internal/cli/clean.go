@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newCleanCmd() *cobra.Command {
@@ -21,11 +21,11 @@ func newCleanCmd() *cobra.Command {
 
 			if all {
 				// Also clean logs and old tokens
-				logsDir := filepath.Join(config.GCMDir(), "logs")
+				logsDir := filepath.Join(_config.GCMDir(), "logs")
 				if err := os.RemoveAll(logsDir); err != nil {
-					ui.Warning("Failed to clean logs: %v", err)
+					_ui.Warning("Failed to clean logs: %v", err)
 				} else {
-					ui.Success("Cleaned logs directory")
+					_ui.Success("Cleaned logs directory")
 				}
 			}
 
@@ -36,7 +36,7 @@ func newCleanCmd() *cobra.Command {
 				return err
 			}
 
-			ui.Success("Cache cleaned")
+			_ui.Success("Cache cleaned")
 			return nil
 		},
 	}

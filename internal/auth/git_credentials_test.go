@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 func TestClassifyHelper(t *testing.T) {
@@ -48,7 +48,7 @@ func TestNewInspectorAndDefaultRunner(t *testing.T) {
 }
 
 func TestInspectGitCredential(t *testing.T) {
-	def := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
+	def := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
 	inspector := &GitCredentialInspector{Runner: func(_ context.Context, stdin string, _ string, args ...string) (string, string, error) {
 		joined := strings.Join(args, " ")
 		switch {
@@ -84,7 +84,7 @@ func TestInspectGitCredential(t *testing.T) {
 }
 
 func TestInspectGitCredentialNoCredential(t *testing.T) {
-	def := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
+	def := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
 	inspector := &GitCredentialInspector{Runner: func(_ context.Context, _ string, _ string, args ...string) (string, string, error) {
 		if strings.Join(args, " ") == "credential fill" {
 			return "", "fatal: could not read Username", fmt.Errorf("exit status 128")
@@ -102,7 +102,7 @@ func TestInspectGitCredentialNoCredential(t *testing.T) {
 }
 
 func TestInspectGitCredentialEmptySuccessfulFill(t *testing.T) {
-	def := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
+	def := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
 	inspector := &GitCredentialInspector{Runner: func(_ context.Context, _ string, _ string, args ...string) (string, string, error) {
 		if strings.Join(args, " ") == "credential fill" {
 			return "username=octo\n", "", nil
@@ -133,7 +133,7 @@ func TestInspectGitCredentialErrorAndHelperBranches(t *testing.T) {
 			return "", "", fmt.Errorf("unexpected args: %s", strings.Join(args, " "))
 		}
 	}}
-	def := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", WebURL: "example.com"}
+	def := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", WebURL: "example.com"}
 	inspection, err := inspector.InspectGitCredential(context.Background(), def, "me")
 	if err != nil {
 		t.Fatalf("InspectGitCredential: %v", err)
@@ -145,14 +145,14 @@ func TestInspectGitCredentialErrorAndHelperBranches(t *testing.T) {
 		t.Fatalf("expected empty reset helper to be skipped: %+v", inspection.Helpers)
 	}
 
-	badDef := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub"}
+	badDef := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub"}
 	if _, err := inspector.InspectGitCredential(context.Background(), badDef, ""); err == nil {
 		t.Fatal("expected empty credential server error")
 	}
 }
 
 func TestRejectGitCredential(t *testing.T) {
-	def := providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab", WebURL: "https://gitlab.com", GitHosts: []string{"gitlab.com"}}
+	def := _provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab", WebURL: "https://gitlab.com", GitHosts: []string{"gitlab.com"}}
 	called := false
 	inspector := &GitCredentialInspector{Runner: func(_ context.Context, stdin string, _ string, args ...string) (string, string, error) {
 		if strings.Join(args, " ") != "credential reject" {
@@ -171,7 +171,7 @@ func TestRejectGitCredential(t *testing.T) {
 }
 
 func TestRejectGitCredentialErrors(t *testing.T) {
-	def := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
+	def := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
 	stderrInspector := &GitCredentialInspector{Runner: func(context.Context, string, string, ...string) (string, string, error) {
 		return "", "denied", fmt.Errorf("exit status 1")
 	}}
@@ -186,7 +186,7 @@ func TestRejectGitCredentialErrors(t *testing.T) {
 		t.Fatalf("expected wrapped command error, got %v", err)
 	}
 
-	badDef := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub"}
+	badDef := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub"}
 	if err := plainInspector.RejectGitCredential(context.Background(), badDef, "octo"); err == nil {
 		t.Fatal("expected empty credential server error")
 	}

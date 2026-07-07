@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/config"
+	_config "github.com/justjundana/git-config-manager/internal/config"
 )
 
 const defaultGitHubAPIURL = "https://api.github.com"
@@ -33,7 +33,7 @@ type Registry struct {
 }
 
 // NewRegistry builds a registry from config, preserving legacy github config.
-func NewRegistry(cfg *config.Config) *Registry {
+func NewRegistry(cfg *_config.Config) *Registry {
 	r := &Registry{
 		providers: make(map[ProviderID]Definition),
 		hostIndex: make(map[string]ProviderID),
@@ -77,7 +77,7 @@ func NewRegistry(cfg *config.Config) *Registry {
 	return r
 }
 
-func legacyGitHubConfigOverridesProvider(cfg *config.Config) bool {
+func legacyGitHubConfigOverridesProvider(cfg *_config.Config) bool {
 	if cfg == nil || cfg.GitHub.APIURL == "" {
 		return false
 	}
@@ -211,7 +211,7 @@ func GitLabCapabilities() CapabilitySet {
 	}
 }
 
-func definitionFromConfig(id ProviderID, providerCfg config.ProviderConfig) Definition {
+func definitionFromConfig(id ProviderID, providerCfg _config.ProviderConfig) Definition {
 	def := Definition{
 		ID:                id,
 		Type:              providerCfg.Type,
@@ -238,15 +238,15 @@ func definitionFromConfig(id ProviderID, providerCfg config.ProviderConfig) Defi
 	return def
 }
 
-func defaultGitLabConfig() config.ProviderConfig {
-	return config.ProviderConfig{
+func defaultGitLabConfig() _config.ProviderConfig {
+	return _config.ProviderConfig{
 		Type:       "gitlab",
 		APIURL:     "https://gitlab.com/api/v4",
 		WebURL:     "https://gitlab.com",
 		GitHosts:   []string{"gitlab.com"},
 		SSHHost:    "gitlab.com",
 		UploadKeys: true,
-		Auth: config.ProviderAuthConfig{
+		Auth: _config.ProviderAuthConfig{
 			DefaultMethod: AuthMethodPAT,
 			Scopes:        []string{"api", "read_user", "read_repository", "write_repository"},
 		},

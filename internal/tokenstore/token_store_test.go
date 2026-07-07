@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	cryptoSvc "github.com/justjundana/git-config-manager/internal/service/crypto"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
 	"github.com/zalando/go-keyring"
 )
@@ -20,25 +20,25 @@ func newPlainStore(t *testing.T) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
 	cfg.Security.AllowPlaintextTokens = true
-	log := logger.New(logger.LevelError, os.Stderr)
-	return NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	return NewTokenStore(cfg, _crypto.NewService(), log, nil)
 }
 
 func newEncryptedStore(t *testing.T, password string) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	prompt := func(_ string) (string, error) { return password, nil }
-	return NewTokenStore(cfg, cryptoSvc.NewService(), log, prompt)
+	return NewTokenStore(cfg, _crypto.NewService(), log, prompt)
 }
 
 // --- plain-text backend ----------------------------------------------------
@@ -67,12 +67,12 @@ func TestTokenStore_Plain_SaveLoadDelete(t *testing.T) {
 func TestTokenStore_Plain_DisabledWithoutExplicitOptIn(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
 	cfg.Security.MasterPassword = false
 	cfg.Security.AllowPlaintextTokens = false
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), nil)
+	ts := NewTokenStore(cfg, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), nil)
 
 	if err := ts.Save("plain-disabled", "tok"); err == nil || !strings.Contains(err.Error(), "plaintext token storage disabled") {
 		t.Fatalf("Save error = %v", err)
@@ -85,11 +85,11 @@ func TestTokenStore_Plain_DisabledWithoutExplicitOptIn(t *testing.T) {
 func TestTokenStore_PlainBackendRejectsDirectUseWhenDisabled(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
 	cfg.Security.AllowPlaintextTokens = false
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), nil)
+	ts := NewTokenStore(cfg, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), nil)
 
 	if err := ts.savePlain("plain-disabled-direct", "tok"); err == nil || !strings.Contains(err.Error(), "plaintext token storage disabled") {
 		t.Fatalf("savePlain error = %v", err)
@@ -103,7 +103,7 @@ func TestTokenStore_Plain_EmptyFile(t *testing.T) {
 	ts := newPlainStore(t)
 
 	path, _ := sanitizeTokenPath("empty")
-	os.MkdirAll(config.GCMDir()+"/tokens", 0o700)
+	os.MkdirAll(_config.GCMDir()+"/tokens", 0o700)
 	os.WriteFile(path, []byte("  \n"), 0o600)
 
 	_, err := ts.Load("empty")
@@ -153,13 +153,13 @@ func TestTokenStore_Encrypted_WrongPassword(t *testing.T) {
 func TestTokenStore_Encrypted_NoPrompt(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	ts := NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	err := ts.Save("noprompt", "tok")
 	if err == nil {
 		t.Fatal("expected error when promptFunc is nil")
@@ -169,12 +169,12 @@ func TestTokenStore_Encrypted_NoPrompt(t *testing.T) {
 func TestTokenStore_Encrypted_EmptyPassword(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), log, func(_ string) (string, error) {
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := NewTokenStore(cfg, _crypto.NewService(), log, func(_ string) (string, error) {
 		return "", nil
 	})
 	err := ts.Save("emptypw", "tok")
@@ -186,7 +186,7 @@ func TestTokenStore_Encrypted_EmptyPassword(t *testing.T) {
 func TestTokenStore_Encrypted_CorruptFile(t *testing.T) {
 	ts := newEncryptedStore(t, "mypass")
 	path, _ := sanitizeTokenPath("corrupt")
-	os.MkdirAll(config.GCMDir()+"/tokens", 0o700)
+	os.MkdirAll(_config.GCMDir()+"/tokens", 0o700)
 	// Write garbage that's too short.
 	os.WriteFile(path, []byte{0x00, 0x10}, 0o600)
 
@@ -208,12 +208,12 @@ func TestTokenStore_BackendSelection_Keychain(t *testing.T) {
 	}
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = true
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := NewTokenStore(cfg, _crypto.NewService(), log, nil)
 
 	err := ts.Save("keychaintest", "tok")
 	if err != nil && containsStr(err.Error(), "master password") {
@@ -227,13 +227,13 @@ func TestTokenStore_BackendSelection_Keychain(t *testing.T) {
 func TestTokenStore_SetPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	// Start with nil prompt, then set it via SetPromptFunc.
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	ts := NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	ts.SetPromptFunc(func(_ string) (string, error) {
 		return "replaced", nil
 	})
@@ -459,13 +459,13 @@ func TestTokenStore_Load_PathTraversal(t *testing.T) {
 func TestTokenStore_Encrypted_PromptReturnsError(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
 	cfg.Security.MasterPassword = true
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), log, func(_ string) (string, error) {
+	ts := NewTokenStore(cfg, _crypto.NewService(), log, func(_ string) (string, error) {
 		return "", fmt.Errorf("user cancelled")
 	})
 	err := ts.Save("prompterr", "tok")
@@ -572,8 +572,8 @@ func TestTokenStore_WriteTokenFile_UnwritableDir(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{EncryptTokens: false, AllowPlaintextTokens: true},
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{EncryptTokens: false, AllowPlaintextTokens: true},
 	}
 
 	// Create .gcm dir, then make tokens a read-only dir with a file inside
@@ -583,7 +583,7 @@ func TestTokenStore_WriteTokenFile_UnwritableDir(t *testing.T) {
 	os.Chmod(tokensDir, 0o000)
 	defer os.Chmod(tokensDir, 0o755)
 
-	ts := NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), nil)
+	ts := NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), nil)
 	err := ts.Save("blocked-profile", "token123")
 	if err == nil {
 		t.Fatal("expected error when tokens dir is unwritable")
@@ -594,8 +594,8 @@ func TestTokenStore_Encrypted_CorruptPayloadTooShort(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
@@ -606,7 +606,7 @@ func TestTokenStore_Encrypted_CorruptPayloadTooShort(t *testing.T) {
 	os.MkdirAll(tokenDir, 0o700)
 	os.WriteFile(filepath.Join(tokenDir, "short.token"), []byte{0x00}, 0o600)
 
-	ts := NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), func(msg string) (string, error) {
+	ts := NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), func(msg string) (string, error) {
 		return "password", nil
 	})
 	_, err := ts.Load("short")
@@ -619,8 +619,8 @@ func TestTokenStore_Encrypted_CorruptSaltLenTooBig(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
@@ -632,7 +632,7 @@ func TestTokenStore_Encrypted_CorruptSaltLenTooBig(t *testing.T) {
 	data := []byte{0xFF, 0xFF, 0x01, 0x02, 0x03} // salt len = 65535, payload only 3 bytes
 	os.WriteFile(filepath.Join(tokenDir, "bigsalt.token"), data, 0o600)
 
-	ts := NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), func(msg string) (string, error) {
+	ts := NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), func(msg string) (string, error) {
 		return "password", nil
 	})
 	_, err := ts.Load("bigsalt")
@@ -645,14 +645,14 @@ func TestTokenStore_Encrypted_SaveNoPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
 	}
 
-	ts := NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), nil)
+	ts := NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), nil)
 	err := ts.Save("noprompt", "token")
 	if err == nil {
 		t.Fatal("expected error when no prompt func set for encrypted save")
@@ -663,8 +663,8 @@ func TestTokenStore_Encrypted_LoadNoPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
@@ -679,7 +679,7 @@ func TestTokenStore_Encrypted_LoadNoPromptFunc(t *testing.T) {
 	payload[1] = 16
 	os.WriteFile(filepath.Join(tokenDir, "noprompt.token"), payload, 0o600)
 
-	ts := NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), nil)
+	ts := NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), nil)
 	_, err := ts.Load("noprompt")
 	if err == nil {
 		t.Fatal("expected error when no prompt func for encrypted load")
@@ -740,10 +740,10 @@ func newKeychainStore(t *testing.T) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := &config.Config{
-		Security: config.SecurityConfig{UseKeychain: true},
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{UseKeychain: true},
 	}
-	return NewTokenStore(cfg, nil, logger.New(logger.LevelError, os.Stderr), nil)
+	return NewTokenStore(cfg, nil, _logger.New(_logger.LevelError, os.Stderr), nil)
 }
 
 func TestTokenStore_Keychain_SaveLoadDelete(t *testing.T) {
@@ -930,7 +930,7 @@ func TestTokenStore_Encrypted_V1BackwardCompat(t *testing.T) {
 
 	password := "myOldPassword"
 	token := "ghp_legacy_v1_token"
-	crypto := cryptoSvc.NewService()
+	crypto := _crypto.NewService()
 
 	// Produce a v1-format file: [2-byte saltLen | salt | ciphertext]
 	salt, err := crypto.GenerateSalt()
@@ -954,13 +954,13 @@ func TestTokenStore_Encrypted_V1BackwardCompat(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
 	}
-	ts := NewTokenStore(cfg, crypto, logger.New(logger.LevelError, os.Stderr), func(_ string) (string, error) {
+	ts := NewTokenStore(cfg, crypto, _logger.New(_logger.LevelError, os.Stderr), func(_ string) (string, error) {
 		return password, nil
 	})
 
@@ -1131,14 +1131,14 @@ func TestTokenStore_Keychain_SaveFallbackToEncrypted(t *testing.T) {
 
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			UseKeychain:    true,
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
 	}
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), func(_ string) (string, error) {
+	ts := NewTokenStore(cfg, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), func(_ string) (string, error) {
 		return "testpass", nil
 	})
 
@@ -1148,14 +1148,14 @@ func TestTokenStore_Keychain_SaveFallbackToEncrypted(t *testing.T) {
 	}
 
 	// Verify we can load via encrypted backend directly
-	cfg2 := &config.Config{
-		Security: config.SecurityConfig{
+	cfg2 := &_config.Config{
+		Security: _config.SecurityConfig{
 			UseKeychain:    false,
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
 	}
-	ts2 := NewTokenStore(cfg2, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), func(_ string) (string, error) {
+	ts2 := NewTokenStore(cfg2, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), func(_ string) (string, error) {
 		return "testpass", nil
 	})
 	tok, err := ts2.Load("fallback-enc")
@@ -1174,8 +1174,8 @@ func TestTokenStore_Keychain_LoadFallbackToEncrypted(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	password := "testpass"
-	cfg := &config.Config{
-		Security: config.SecurityConfig{
+	cfg := &_config.Config{
+		Security: _config.SecurityConfig{
 			UseKeychain:    true,
 			EncryptTokens:  true,
 			MasterPassword: true,
@@ -1183,13 +1183,13 @@ func TestTokenStore_Keychain_LoadFallbackToEncrypted(t *testing.T) {
 	}
 
 	// First, save a token via encrypted backend directly
-	cfgEnc := &config.Config{
-		Security: config.SecurityConfig{
+	cfgEnc := &_config.Config{
+		Security: _config.SecurityConfig{
 			EncryptTokens:  true,
 			MasterPassword: true,
 		},
 	}
-	tsEnc := NewTokenStore(cfgEnc, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), func(_ string) (string, error) {
+	tsEnc := NewTokenStore(cfgEnc, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), func(_ string) (string, error) {
 		return password, nil
 	})
 	if err := tsEnc.Save("kc-fallback", "ghp_from_file"); err != nil {
@@ -1201,7 +1201,7 @@ func TestTokenStore_Keychain_LoadFallbackToEncrypted(t *testing.T) {
 	defer func() { keyringGet = oldGet }()
 	keyringGet = func(_, _ string) (string, error) { return "", fmt.Errorf("keychain unavailable") }
 
-	ts := NewTokenStore(cfg, cryptoSvc.NewService(), logger.New(logger.LevelError, os.Stderr), func(_ string) (string, error) {
+	ts := NewTokenStore(cfg, _crypto.NewService(), _logger.New(_logger.LevelError, os.Stderr), func(_ string) (string, error) {
 		return password, nil
 	})
 	tok, err := ts.Load("kc-fallback")
@@ -1220,7 +1220,7 @@ func TestTokenStore_Keychain_LoadFallbackToEncrypted(t *testing.T) {
 func TestTokenStore_Encrypted_GenerateSaltError(t *testing.T) {
 	old := generateSalt
 	defer func() { generateSalt = old }()
-	generateSalt = func(_ *cryptoSvc.Service) ([]byte, error) {
+	generateSalt = func(_ *_crypto.Service) ([]byte, error) {
 		return nil, fmt.Errorf("entropy exhausted")
 	}
 
@@ -1234,7 +1234,7 @@ func TestTokenStore_Encrypted_GenerateSaltError(t *testing.T) {
 func TestTokenStore_Encrypted_EncryptError(t *testing.T) {
 	old := encryptData
 	defer func() { encryptData = old }()
-	encryptData = func(_ *cryptoSvc.Service, _, _ []byte) ([]byte, error) {
+	encryptData = func(_ *_crypto.Service, _, _ []byte) ([]byte, error) {
 		return nil, fmt.Errorf("encryption failed")
 	}
 

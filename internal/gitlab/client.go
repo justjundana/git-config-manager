@@ -11,24 +11,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 const maxResponseSize = 5 << 20 // 5 MiB
 
 // Client handles GitLab API operations.
 type Client struct {
-	cfg        config.ProviderConfig
-	log        *logger.Logger
+	cfg        _config.ProviderConfig
+	log        *_logger.Logger
 	apiURL     string
-	token      provider.TokenSet
+	token      _provider.TokenSet
 	httpClient *http.Client
 }
 
 // NewClient creates a GitLab API client from provider config.
-func NewClient(cfg config.ProviderConfig, log *logger.Logger) *Client {
+func NewClient(cfg _config.ProviderConfig, log *_logger.Logger) *Client {
 	apiURL := strings.TrimRight(cfg.APIURL, "/")
 	if apiURL == "" {
 		apiURL = "https://gitlab.com/api/v4"
@@ -44,7 +44,7 @@ func NewClient(cfg config.ProviderConfig, log *logger.Logger) *Client {
 // WithTokenSet returns a shallow client clone configured with the provided token.
 // It lets callers perform token-scoped operations without mutating a shared
 // client instance.
-func (c *Client) WithTokenSet(token provider.TokenSet) *Client {
+func (c *Client) WithTokenSet(token _provider.TokenSet) *Client {
 	clone := *c
 	clone.token = token
 	return &clone
@@ -78,11 +78,11 @@ type GPGKeyResponse struct {
 
 // SetToken configures a PAT token for API calls.
 func (c *Client) SetToken(token string) {
-	c.token = provider.TokenSet{AccessToken: token, AuthMethod: provider.AuthMethodPAT}
+	c.token = _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodPAT}
 }
 
 // SetTokenSet configures a structured token for API calls.
-func (c *Client) SetTokenSet(token provider.TokenSet) {
+func (c *Client) SetTokenSet(token _provider.TokenSet) {
 	c.token = token
 }
 

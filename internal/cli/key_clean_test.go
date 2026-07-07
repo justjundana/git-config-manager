@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/keyledger"
-	"github.com/justjundana/git-config-manager/internal/profile"
+	_keyledger "github.com/justjundana/git-config-manager/internal/keyledger"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
 )
 
 // writeFakeSSHKey creates an empty private + public key file pair at path.
@@ -36,17 +36,17 @@ func TestSSHClean_RemovesOrphanKeepsReferencedAndPreexisting(t *testing.T) {
 
 	// A profile references the "used" key.
 	p := repairTestProfile("work")
-	p.SSH = &profile.SSHConfig{KeyPath: usedPath, KeyType: "ed25519"}
+	p.SSH = &_profile.SSHConfig{KeyPath: usedPath, KeyType: "ed25519"}
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
 
 	// Ledger records the used + orphan keys as GCM-generated. The preexisting
 	// key is intentionally NOT in the ledger.
-	if err := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{Profile: "work", KeyPath: usedPath}); err != nil {
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "work", KeyPath: usedPath}); err != nil {
 		t.Fatalf("ledger add used: %v", err)
 	}
-	if err := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
 		t.Fatalf("ledger add orphan: %v", err)
 	}
 
@@ -84,7 +84,7 @@ func TestSSHClean_DryRunRemovesNothing(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 	orphanPath := filepath.Join(ctr.Config.SSHDir, "id_ed25519_orphan")
 	writeFakeSSHKey(t, orphanPath)
-	if err := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
 		t.Fatalf("ledger add: %v", err)
 	}
 
@@ -120,19 +120,19 @@ func TestSSHClean_NoLedgerEntries(t *testing.T) {
 func TestGPGKeyReferenced_SuffixMatching(t *testing.T) {
 	ref := map[string]struct{}{"ABCDEF12": {}}
 
-	if !gpgKeyReferenced(keyledger.GPGEntry{KeyID: "ABCDEF12"}, ref) {
+	if !gpgKeyReferenced(_keyledger.GPGEntry{KeyID: "ABCDEF12"}, ref) {
 		t.Fatal("exact key ID should match")
 	}
-	if !gpgKeyReferenced(keyledger.GPGEntry{KeyID: "1122ABCDEF12"}, ref) {
+	if !gpgKeyReferenced(_keyledger.GPGEntry{KeyID: "1122ABCDEF12"}, ref) {
 		t.Fatal("longer ledger key ID with matching suffix should match")
 	}
-	if !gpgKeyReferenced(keyledger.GPGEntry{KeyID: "EF12", Fingerprint: "0011223344ABCDEF12"}, ref) {
+	if !gpgKeyReferenced(_keyledger.GPGEntry{KeyID: "EF12", Fingerprint: "0011223344ABCDEF12"}, ref) {
 		t.Fatal("fingerprint suffix should match")
 	}
-	if !gpgKeyReferenced(keyledger.GPGEntry{KeyID: "ZZZZ", Fingerprint: "0000ABCDEF12"}, ref) {
+	if !gpgKeyReferenced(_keyledger.GPGEntry{KeyID: "ZZZZ", Fingerprint: "0000ABCDEF12"}, ref) {
 		t.Fatal("fingerprint-only suffix should match when key ID differs")
 	}
-	if gpgKeyReferenced(keyledger.GPGEntry{KeyID: "99999999"}, ref) {
+	if gpgKeyReferenced(_keyledger.GPGEntry{KeyID: "99999999"}, ref) {
 		t.Fatal("unrelated key should not match")
 	}
 }
@@ -153,7 +153,7 @@ func TestSSHClean_CancelViaPrompt(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 	orphanPath := filepath.Join(ctr.Config.SSHDir, "id_ed25519_orphan")
 	writeFakeSSHKey(t, orphanPath)
-	if err := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "gone", KeyPath: orphanPath}); err != nil {
 		t.Fatalf("ledger add: %v", err)
 	}
 
@@ -191,14 +191,14 @@ func TestGPGClean_DryRunListsOrphans(t *testing.T) {
 
 	// One referenced key, one orphan.
 	p := repairTestProfile("work")
-	p.GPG = &profile.GPGConfig{KeyID: "USEDKEY1"}
+	p.GPG = &_profile.GPGConfig{KeyID: "USEDKEY1"}
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
-	if err := ctr.KeyLedger.AddGPG(keyledger.GPGEntry{Profile: "work", KeyID: "USEDKEY1"}); err != nil {
+	if err := ctr.KeyLedger.AddGPG(_keyledger.GPGEntry{Profile: "work", KeyID: "USEDKEY1"}); err != nil {
 		t.Fatalf("ledger add used: %v", err)
 	}
-	if err := ctr.KeyLedger.AddGPG(keyledger.GPGEntry{Profile: "gone", KeyID: "ORPHANKEY"}); err != nil {
+	if err := ctr.KeyLedger.AddGPG(_keyledger.GPGEntry{Profile: "gone", KeyID: "ORPHANKEY"}); err != nil {
 		t.Fatalf("ledger add orphan: %v", err)
 	}
 
@@ -221,7 +221,7 @@ func TestGPGClean_GPGNotInstalledStopsBeforeDeleting(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 	// GPG is not installed in the test environment, so an orphaned entry must
 	// be reported but not deleted from the ledger.
-	if err := ctr.KeyLedger.AddGPG(keyledger.GPGEntry{Profile: "gone", KeyID: "ORPHANKEY"}); err != nil {
+	if err := ctr.KeyLedger.AddGPG(_keyledger.GPGEntry{Profile: "gone", KeyID: "ORPHANKEY"}); err != nil {
 		t.Fatalf("ledger add: %v", err)
 	}
 
@@ -247,7 +247,7 @@ func TestReferencedGPGKeyIDs(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 
 	p1 := repairTestProfile("a")
-	p1.GPG = &profile.GPGConfig{KeyID: "KEYA"}
+	p1.GPG = &_profile.GPGConfig{KeyID: "KEYA"}
 	if err := ctr.ProfileManager.Create(p1); err != nil {
 		t.Fatalf("create a: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestSSHClean_RemoveFailureKeepsLedger(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dirPath, "child"), []byte("x"), 0o600); err != nil {
 		t.Fatalf("write child: %v", err)
 	}
-	if err := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{Profile: "gone", KeyPath: dirPath}); err != nil {
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "gone", KeyPath: dirPath}); err != nil {
 		t.Fatalf("ledger add: %v", err)
 	}
 

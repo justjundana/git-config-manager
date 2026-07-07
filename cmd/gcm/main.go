@@ -8,22 +8,22 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/justjundana/git-config-manager/internal/cli"
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/container"
-	"github.com/justjundana/git-config-manager/pkg/logger"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_cli "github.com/justjundana/git-config-manager/internal/cli"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_container "github.com/justjundana/git-config-manager/internal/container"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // Replaceable for testing.
 var (
-	configLoad           = config.Load
-	configEnsureDirs     = config.EnsureDirs
+	configLoad           = _config.Load
+	configEnsureDirs     = _config.EnsureDirs
 	osExit               = os.Exit
 	masterPasswordPrompt = func(msg string) (string, error) {
-		return ui.AskPassword(msg)
+		return _ui.AskPassword(msg)
 	}
 )
 
@@ -46,11 +46,11 @@ func run(args []string) int {
 	}
 
 	// Initialize logger
-	log := logger.New(logger.LevelInfo, os.Stderr)
+	log := _logger.New(_logger.LevelInfo, os.Stderr)
 
 	// Handle UI settings
 	if !cfg.UI.Color {
-		ui.DisableColor()
+		_ui.DisableColor()
 	}
 	if cfg.UI.Verbose {
 		log.SetVerbose(true)
@@ -60,7 +60,7 @@ func run(args []string) int {
 	}
 
 	// Create dependency container
-	ctr := container.New(cfg, log)
+	ctr := _container.New(cfg, log)
 
 	// Wire the master-password prompt so encrypted token storage can ask
 	// the user interactively. Uses the ui.AskPassword helper which
@@ -68,8 +68,8 @@ func run(args []string) int {
 	ctr.SetMasterPasswordPrompt(masterPasswordPrompt)
 
 	// Wire CLI commands
-	cli.SetContainer(ctr)
-	rootCmd := cli.NewRootCmd()
+	_cli.SetContainer(ctr)
+	rootCmd := _cli.NewRootCmd()
 
 	// Global flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
@@ -81,7 +81,7 @@ func run(args []string) int {
 			log.SetVerbose(true)
 		}
 		if nc, _ := cmd.Flags().GetBool("no-color"); nc {
-			ui.DisableColor()
+			_ui.DisableColor()
 		}
 		if q, _ := cmd.Flags().GetBool("quiet"); q {
 			log.SetQuiet(true)
@@ -97,7 +97,7 @@ func run(args []string) int {
 	defer stop()
 
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		ui.Error("%v", err)
+		_ui.Error("%v", err)
 		ctr.TokenStore.ZeroPassword()
 		return 1
 	}

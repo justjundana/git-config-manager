@@ -1,10 +1,10 @@
 package cli
 
 import (
-	"github.com/justjundana/git-config-manager/pkg/ui"
-	"github.com/justjundana/git-config-manager/pkg/version"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
+	_version "github.com/justjundana/git-config-manager/pkg/version"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newVersionCmd() *cobra.Command {
@@ -14,19 +14,19 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Show GCM version information",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			info := version.Get()
+			info := _version.Get()
 
 			if short {
-				ui.Print(info.Short())
+				_ui.Print(info.Short())
 				return nil
 			}
 
-			ui.Header("Git Config Manager (GCM)")
-			ui.Blank()
-			ui.Detail("Version", info.Version)
-			ui.Detail("Commit", info.Commit)
-			ui.Detail("Built", info.Date)
-			ui.Detail("OS/Arch", info.OS+"/"+info.Arch)
+			_ui.Header("Git Config Manager (GCM)")
+			_ui.Blank()
+			_ui.Detail("Version", info.Version)
+			_ui.Detail("Commit", info.Commit)
+			_ui.Detail("Built", info.Date)
+			_ui.Detail("OS/Arch", info.OS+"/"+info.Arch)
 
 			return nil
 		},

@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
-func newTestManager(t *testing.T) (*Manager, *config.Config) {
+func newTestManager(t *testing.T) (*Manager, *_config.Config) {
 	t.Helper()
 
 	dir := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(dir, "profiles")
 	cfg.TemplatesDir = filepath.Join(dir, "templates")
 	cfg.CacheDir = filepath.Join(dir, "cache")
@@ -25,8 +25,8 @@ func newTestManager(t *testing.T) (*Manager, *config.Config) {
 		t.Fatal(err)
 	}
 
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 
 	return NewManager(cfg, fs, log), cfg
 }
@@ -879,7 +879,7 @@ func TestManagerList_GetFailsForUnreadableFile(t *testing.T) {
 func TestManagerCreate_ProfilesDirIsFile(t *testing.T) {
 	// When profilesDir is a file instead of directory, MkdirAll / WriteAtomic fails
 	dir := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	// Put a regular file where profiles dir should be
 	blocker := filepath.Join(dir, "profiles")
 	os.WriteFile(blocker, []byte("blocker"), 0o644)
@@ -887,8 +887,8 @@ func TestManagerCreate_ProfilesDirIsFile(t *testing.T) {
 	cfg.TemplatesDir = filepath.Join(dir, "templates")
 	cfg.CacheDir = filepath.Join(dir, "cache")
 
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	mgr := NewManager(cfg, fs, log)
 
 	p := validProfile("fail")
@@ -900,15 +900,15 @@ func TestManagerCreate_ProfilesDirIsFile(t *testing.T) {
 
 func TestManagerUpdate_ProfilesDirIsFile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	profilesDir := filepath.Join(dir, "profiles")
 	os.MkdirAll(profilesDir, 0o755)
 	cfg.ProfilesDir = profilesDir
 	cfg.TemplatesDir = filepath.Join(dir, "templates")
 	cfg.CacheDir = filepath.Join(dir, "cache")
 
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	mgr := NewManager(cfg, fs, log)
 
 	// Create the profile first

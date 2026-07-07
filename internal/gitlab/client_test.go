@@ -10,16 +10,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	return NewClient(config.ProviderConfig{APIURL: server.URL}, logger.New(logger.LevelError, os.Stderr))
+	return NewClient(_config.ProviderConfig{APIURL: server.URL}, _logger.New(_logger.LevelError, os.Stderr))
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -29,17 +29,17 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 func TestNewClientDefaultsAPIURL(t *testing.T) {
-	client := NewClient(config.ProviderConfig{}, logger.New(logger.LevelError, io.Discard))
+	client := NewClient(_config.ProviderConfig{}, _logger.New(_logger.LevelError, io.Discard))
 	if client.apiURL != "https://gitlab.com/api/v4" {
 		t.Fatalf("apiURL = %q", client.apiURL)
 	}
 }
 
 func TestWithTokenSetReturnsTokenScopedClone(t *testing.T) {
-	client := NewClient(config.ProviderConfig{APIURL: "https://gitlab.example/api/v4"}, logger.New(logger.LevelError, io.Discard))
+	client := NewClient(_config.ProviderConfig{APIURL: "https://gitlab.example/api/v4"}, _logger.New(_logger.LevelError, io.Discard))
 	client.SetToken("original")
 
-	clone := client.WithTokenSet(provider.TokenSet{AccessToken: "scoped", AuthMethod: provider.AuthMethodOAuthDevice, TokenType: "bearer"})
+	clone := client.WithTokenSet(_provider.TokenSet{AccessToken: "scoped", AuthMethod: _provider.AuthMethodOAuthDevice, TokenType: "bearer"})
 	if clone == client {
 		t.Fatal("WithTokenSet returned original client")
 	}
@@ -82,7 +82,7 @@ func TestGetUser_UsesBearerForOAuthToken(t *testing.T) {
 		}
 		json.NewEncoder(w).Encode(User{Username: "oauth-user"})
 	})
-	client.SetTokenSet(provider.TokenSet{AccessToken: "oauth-token", AuthMethod: provider.AuthMethodOAuthDevice, TokenType: "bearer"})
+	client.SetTokenSet(_provider.TokenSet{AccessToken: "oauth-token", AuthMethod: _provider.AuthMethodOAuthDevice, TokenType: "bearer"})
 
 	if _, err := client.GetUser(context.Background()); err != nil {
 		t.Fatalf("GetUser: %v", err)
@@ -346,7 +346,7 @@ func TestApiError(t *testing.T) {
 }
 
 func TestAPIHelpersErrorBranches(t *testing.T) {
-	client := NewClient(config.ProviderConfig{APIURL: "http://gitlab.test"}, logger.New(logger.LevelError, io.Discard))
+	client := NewClient(_config.ProviderConfig{APIURL: "http://gitlab.test"}, _logger.New(_logger.LevelError, io.Discard))
 	client.httpClient = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 		return nil, errors.New("network down")
 	})}

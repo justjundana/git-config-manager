@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // ShellType represents the user's shell.
@@ -25,7 +25,7 @@ const (
 
 // Manager handles shell integration.
 type Manager struct {
-	log *logger.Logger
+	log *_logger.Logger
 }
 
 // Test hooks for platform-specific and OS-dependent behaviour.
@@ -36,7 +36,7 @@ var (
 )
 
 // NewManager creates a new shell manager.
-func NewManager(log *logger.Logger) *Manager {
+func NewManager(log *_logger.Logger) *Manager {
 	return &Manager{log: log}
 }
 
@@ -90,8 +90,8 @@ func (m *Manager) Install(shell ShellType) (string, error) {
 	}
 
 	m.log.Debug("Shell integration installed",
-		logger.F("shell", string(shell)),
-		logger.F("config", configFile))
+		_logger.F("shell", string(shell)),
+		_logger.F("config", configFile))
 
 	return configFile, nil
 }

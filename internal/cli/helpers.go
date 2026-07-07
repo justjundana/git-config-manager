@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // requireArgs returns a Cobra PositionalArgs validator that gives a clear,
@@ -107,12 +107,12 @@ func activateAsGlobalIfFirst(profileName string) {
 		return
 	}
 
-	if err := ctr.ProfileSwitcher.Activate(profileName, profile.ScopeGlobal); err != nil {
+	if err := ctr.ProfileSwitcher.Activate(profileName, _profile.ScopeGlobal); err != nil {
 		return
 	}
 
-	ctr.AuditLogger.Log(audit.ActionProfileActivate, profileName,
+	ctr.AuditLogger.Log(_audit.ActionProfileActivate, profileName,
 		map[string]string{"scope": "global", "trigger": "first-auth"}, nil)
-	ui.Blank()
-	ui.Success("Profile %q set as global default (first authenticated profile)", profileName)
+	_ui.Blank()
+	_ui.Success("Profile %q set as global default (first authenticated profile)", profileName)
 }

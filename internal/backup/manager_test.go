@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func testManager(t *testing.T) (*Manager, string) {
@@ -19,14 +19,14 @@ func testManager(t *testing.T) (*Manager, string) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(tmp, ".gcm", "profiles")
 	cfg.TemplatesDir = filepath.Join(tmp, ".gcm", "templates")
 
 	os.MkdirAll(cfg.ProfilesDir, 0o755)
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
 
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	return NewManager(cfg, log), tmp
 }
 
@@ -1001,8 +1001,8 @@ func TestList_NonExistentBackupDir(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	cfg := _config.DefaultConfig()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 
 	// Don't create the backups dir
@@ -2005,10 +2005,10 @@ func TestList_DirUnreadable(t *testing.T) {
 	os.Chmod(backupDir, 0o000)
 	t.Cleanup(func() { os.Chmod(backupDir, 0o700) })
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(tmp, ".gcm", "profiles")
 	cfg.TemplatesDir = filepath.Join(tmp, ".gcm", "templates")
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	mgr := NewManager(cfg, log)
 
 	_, err := mgr.List()
@@ -2098,8 +2098,8 @@ func TestRestore_RejectsOversizedFile(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	cfg := _config.DefaultConfig()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 
 	// Create a backup archive with a file whose header declares a size

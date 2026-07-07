@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
+	_config "github.com/justjundana/git-config-manager/internal/config"
 )
 
 // fileName is the ledger file stored under the GCM data directory.
@@ -82,7 +82,7 @@ type Ledger struct {
 
 // New creates a Ledger backed by the default file under the GCM data directory.
 func New() *Ledger {
-	return &Ledger{path: filepath.Join(config.GCMDir(), fileName)}
+	return &Ledger{path: filepath.Join(_config.GCMDir(), fileName)}
 }
 
 // NewWithPath creates a Ledger backed by an explicit file path. Intended for

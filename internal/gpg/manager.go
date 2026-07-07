@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // defaultCommandTimeout bounds GPG invocations (listing, signing, exporting).
@@ -23,12 +23,12 @@ const (
 
 // Manager handles GPG key operations.
 type Manager struct {
-	cfg *config.Config
-	log *logger.Logger
+	cfg *_config.Config
+	log *_logger.Logger
 }
 
 // NewManager creates a new GPG manager.
-func NewManager(cfg *config.Config, log *logger.Logger) *Manager {
+func NewManager(cfg *_config.Config, log *_logger.Logger) *Manager {
 	return &Manager{cfg: cfg, log: log}
 }
 
@@ -143,8 +143,8 @@ Expire-Date: %s
 
 	key := keys[len(keys)-1] // Latest key
 	m.log.Debug("GPG key generated",
-		logger.F("keyID", key.KeyID),
-		logger.F("email", opts.Email))
+		_logger.F("keyID", key.KeyID),
+		_logger.F("email", opts.Email))
 
 	return &key, nil
 }
@@ -281,7 +281,7 @@ func (m *Manager) Delete(keyID string) error {
 	defer cancel2()
 	cmd := exec.CommandContext(ctx2, gpgCmd, "--batch", "--yes", "--delete-secret-keys", fingerprint)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		m.log.Debug("delete secret key failed", logger.F("output", string(out)))
+		m.log.Debug("delete secret key failed", _logger.F("output", string(out)))
 		// Not fatal — key might not have a secret component
 	}
 

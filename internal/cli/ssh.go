@@ -6,14 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/internal/keyledger"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/ssh"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_keyledger "github.com/justjundana/git-config-manager/internal/keyledger"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ssh "github.com/justjundana/git-config-manager/internal/ssh"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newSSHCmd() *cobra.Command {
@@ -63,17 +63,17 @@ Examples:
 
 			p, err := ctr.ProfileManager.Get(profileName)
 			if err != nil {
-				ui.Error("profile %q not found", profileName)
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
-				ui.Print("  To create a new profile:   gcm profile create " + profileName + " -i")
+				_ui.Error("profile %q not found", profileName)
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
+				_ui.Print("  To create a new profile:   gcm profile create " + profileName + " -i")
 				return profileNotFoundError(profileName)
 			}
 			keyProfileName := sshKeyProfileName(profileName, p)
 
 			if cmd.Flags().Changed("passphrase") && passphrase != "" {
-				ui.Warning("Passphrase provided via --passphrase flag may appear in shell history.")
-				ui.Print("  For secure passphrase entry, omit the flag and you will be prompted interactively.")
+				_ui.Warning("Passphrase provided via --passphrase flag may appear in shell history.")
+				_ui.Print("  For secure passphrase entry, omit the flag and you will be prompted interactively.")
 			}
 
 			allowAdopt := !overwrite && passphrase == "" && !cmd.Flags().Changed("comment") && !cmd.Flags().Changed("bits")
@@ -81,10 +81,10 @@ Examples:
 				if keyInfo, adopted, adoptErr := adoptExistingSSHKeyForProfile(profileName, p, []string{keyType}); adoptErr != nil {
 					return adoptErr
 				} else if adopted {
-					ui.Info("Existing SSH key found and linked to profile %q", profileName)
+					_ui.Info("Existing SSH key found and linked to profile %q", profileName)
 					printSSHKeyDetails(keyInfo)
 					uploadSSHKeyToAuthenticatedProviders(cmd.Context(), profileName, p, keyInfo)
-					ui.NextSteps([]string{
+					_ui.NextSteps([]string{
 						fmt.Sprintf("Upload key:     gcm ssh upload %s", profileName),
 						fmt.Sprintf("Test connection: gcm ssh test %s", profileName),
 					})
@@ -94,14 +94,14 @@ Examples:
 
 			if overwrite {
 				if expectedPath, pathErr := ctr.SSHManager.ExpectedKeyPath(keyProfileName, keyType); pathErr == nil {
-					ui.Warning("Overwriting local SSH key at %s", expectedPath)
+					_ui.Warning("Overwriting local SSH key at %s", expectedPath)
 				}
 			}
 
-			sp := ui.NewSpinner("Generating SSH key...")
+			sp := _ui.NewSpinner("Generating SSH key...")
 			sp.Start()
 
-			keyInfo, err := ctr.SSHManager.Generate(ssh.GenerateOptions{
+			keyInfo, err := ctr.SSHManager.Generate(_ssh.GenerateOptions{
 				Profile:    keyProfileName,
 				KeyType:    keyType,
 				Bits:       bits,
@@ -111,34 +111,34 @@ Examples:
 			})
 			if err != nil {
 				sp.StopError("Failed to generate SSH key")
-				ctr.AuditLogger.Log(audit.ActionSSHGenerate, profileName,
+				ctr.AuditLogger.Log(_audit.ActionSSHGenerate, profileName,
 					map[string]string{"type": keyType}, err)
 				return err
 			}
 
 			sp.Stop("SSH key generated!")
-			ctr.AuditLogger.Log(audit.ActionSSHGenerate, profileName,
+			ctr.AuditLogger.Log(_audit.ActionSSHGenerate, profileName,
 				map[string]string{"type": keyInfo.Type, "path": keyInfo.Path}, nil)
 
 			// Record the key in the generated-keys ledger so `gcm ssh clean` can
 			// later distinguish it from pre-existing keys. Adopted keys are never
 			// recorded and are therefore always left untouched.
-			if ledgerErr := ctr.KeyLedger.AddSSH(keyledger.SSHEntry{
+			if ledgerErr := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{
 				Profile:     profileName,
 				KeyPath:     keyInfo.Path,
 				Fingerprint: keyInfo.Fingerprint,
 			}); ledgerErr != nil {
-				ui.Warning("Could not record generated key in ledger: %v", ledgerErr)
+				_ui.Warning("Could not record generated key in ledger: %v", ledgerErr)
 			}
 
-			ui.Blank()
+			_ui.Blank()
 			printSSHKeyDetails(keyInfo)
 
 			// Update profile if it exists
 			if p != nil {
-				p.SSH = &profile.SSHConfig{
+				p.SSH = &_profile.SSHConfig{
 					KeyPath:     keyInfo.Path,
-					KeyType:     profile.KeyType(keyInfo.Type),
+					KeyType:     _profile.KeyType(keyInfo.Type),
 					Fingerprint: keyInfo.Fingerprint,
 					Comment:     keyInfo.Comment,
 				}
@@ -147,7 +147,7 @@ Examples:
 
 			uploadSSHKeyToAuthenticatedProviders(cmd.Context(), profileName, p, keyInfo)
 
-			ui.NextSteps([]string{
+			_ui.NextSteps([]string{
 				fmt.Sprintf("Test connection: gcm ssh test %s", profileName),
 			})
 
@@ -180,21 +180,21 @@ func sshListRun() error {
 	}
 
 	if len(keys) == 0 {
-		ui.Info("No SSH keys found")
+		_ui.Info("No SSH keys found")
 		return nil
 	}
 
 	headers := []string{"Key", "Type", "Fingerprint", "Agent"}
 	var rows [][]string
 	for _, k := range keys {
-		agent := ui.Red("✗")
+		agent := _ui.Red("✗")
 		if k.InAgent {
-			agent = ui.Green("✓")
+			agent = _ui.Green("✓")
 		}
 		rows = append(rows, []string{k.Path, k.Type, k.Fingerprint, agent})
 	}
 
-	ui.SimpleTable(headers, rows)
+	_ui.SimpleTable(headers, rows)
 	return nil
 }
 
@@ -212,27 +212,27 @@ Examples:
 		RunE: func(_ *cobra.Command, args []string) error {
 			p, err := ctr.ProfileManager.Get(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
 				if keyInfo, adopted, adoptErr := adoptExistingSSHKeyForProfile(args[0], p, defaultSSHAdoptionKeyTypes()); adoptErr != nil {
 					return adoptErr
 				} else if adopted {
-					ui.Info("Existing SSH key found and linked to profile %q", args[0])
-					ui.Detail("Path", keyInfo.Path)
+					_ui.Info("Existing SSH key found and linked to profile %q", args[0])
+					_ui.Detail("Path", keyInfo.Path)
 				}
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
-				ui.Error("profile %q has no SSH key configured", args[0])
-				ui.Blank()
-				ui.Print("  To generate one: gcm ssh generate %s", args[0])
+				_ui.Error("profile %q has no SSH key configured", args[0])
+				_ui.Blank()
+				_ui.Print("  To generate one: gcm ssh generate %s", args[0])
 				return profileMissingSSHKeyError(args[0])
 			}
 
-			def, err := selectProfileProviderWithCapability(args[0], p, providerName, providerpkg.CapabilitySSHKeys)
+			def, err := selectProfileProviderWithCapability(args[0], p, providerName, _provider.CapabilitySSHKeys)
 			if err != nil {
 				return err
 			}
@@ -241,18 +241,18 @@ Examples:
 				host = firstProviderHost(def)
 			}
 
-			sp := ui.NewSpinner(fmt.Sprintf("Testing SSH connection to %s...", def.DisplayName))
+			sp := _ui.NewSpinner(fmt.Sprintf("Testing SSH connection to %s...", def.DisplayName))
 			sp.Start()
 
 			output, testErr := ctr.SSHManager.TestConnectionToHost(p.SSH.KeyPath, host, def.SSHPort)
 			if testErr != nil {
 				sp.StopError("SSH test failed")
-				ui.Error("%s", output)
+				_ui.Error("%s", output)
 				return testErr
 			}
 
 			sp.Stop(fmt.Sprintf("SSH connection to %s successful!", def.DisplayName))
-			ui.Print(output)
+			_ui.Print(output)
 			return nil
 		},
 	}
@@ -266,29 +266,29 @@ func newSSHCopyCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			p, err := ctr.ProfileManager.Get(args[0])
 			if err != nil {
-				ui.Error("profile %q not found", args[0])
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
+				_ui.Error("profile %q not found", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
 				return profileNotFoundError(args[0])
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
 				if _, adopted, adoptErr := adoptExistingSSHKeyForProfile(args[0], p, defaultSSHAdoptionKeyTypes()); adoptErr != nil {
 					return adoptErr
 				} else if adopted {
-					ui.Info("Existing SSH key found and linked to profile %q", args[0])
+					_ui.Info("Existing SSH key found and linked to profile %q", args[0])
 				}
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
-				ui.Error("profile %q has no SSH key configured", args[0])
-				ui.Blank()
-				ui.Print("  To generate one: gcm ssh generate %s", args[0])
+				_ui.Error("profile %q has no SSH key configured", args[0])
+				_ui.Blank()
+				_ui.Print("  To generate one: gcm ssh generate %s", args[0])
 				return profileMissingSSHKeyError(args[0])
 			}
 			pubKey, err := ctr.SSHManager.GetPublicKey(p.SSH.KeyPath)
 			if err != nil {
 				return err
 			}
-			ui.Print(pubKey)
+			_ui.Print(pubKey)
 			return nil
 		},
 	}
@@ -317,34 +317,34 @@ Examples:
 
 			p, err := ctr.ProfileManager.Get(profileName)
 			if err != nil {
-				ui.Error("profile %q not found", profileName)
+				_ui.Error("profile %q not found", profileName)
 				return profileNotFoundError(profileName)
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
 				if keyInfo, adopted, adoptErr := adoptExistingSSHKeyForProfile(profileName, p, defaultSSHAdoptionKeyTypes()); adoptErr != nil {
 					return adoptErr
 				} else if adopted {
-					ui.Info("Existing SSH key found and linked to profile %q", profileName)
-					ui.Detail("Path", keyInfo.Path)
+					_ui.Info("Existing SSH key found and linked to profile %q", profileName)
+					_ui.Detail("Path", keyInfo.Path)
 				}
 			}
 			if p.SSH == nil || p.SSH.KeyPath == "" {
-				ui.Error("profile %q has no SSH key configured", profileName)
-				ui.Blank()
-				ui.Print("  To generate one: gcm ssh generate %s", profileName)
+				_ui.Error("profile %q has no SSH key configured", profileName)
+				_ui.Blank()
+				_ui.Print("  To generate one: gcm ssh generate %s", profileName)
 				return profileMissingSSHKeyError(profileName)
 			}
 
-			def, err := selectProfileProviderWithCapability(profileName, p, providerName, providerpkg.CapabilitySSHKeys)
+			def, err := selectProfileProviderWithCapability(profileName, p, providerName, _provider.CapabilitySSHKeys)
 			if err != nil {
 				return err
 			}
 
 			token, err := loadProviderToken(profileName, def, p)
 			if err != nil || token.AccessToken == "" {
-				ui.Error("No %s token found for profile %q", def.DisplayName, profileName)
-				ui.Blank()
-				ui.Print("  Connect first: gcm connect %s --provider %s", profileName, def.ID)
+				_ui.Error("No %s token found for profile %q", def.DisplayName, profileName)
+				_ui.Blank()
+				_ui.Print("  Connect first: gcm connect %s --provider %s", profileName, def.ID)
 				return missingProviderTokenError(def.DisplayName, profileName)
 			}
 
@@ -357,25 +357,25 @@ Examples:
 
 			// Check for duplicates
 			if !force {
-				sp := ui.NewSpinner(fmt.Sprintf("Checking if key already exists on %s...", def.DisplayName))
+				sp := _ui.NewSpinner(fmt.Sprintf("Checking if key already exists on %s...", def.DisplayName))
 				sp.Start()
 
 				exists, checkErr := providerSSHKeyExists(ctx, def, token, pubKey)
 				if checkErr != nil {
 					sp.StopError("Could not check existing keys")
-					ui.Warning("Check failed: %v", checkErr)
-					ui.Print("  Use --force to skip the duplicate check")
+					_ui.Warning("Check failed: %v", checkErr)
+					_ui.Print("  Use --force to skip the duplicate check")
 					return checkErr
 				}
 				if exists {
 					sp.Stop(fmt.Sprintf("Key already exists on %s", def.DisplayName))
-					ui.Info("This SSH key is already uploaded — no action needed.")
+					_ui.Info("This SSH key is already uploaded — no action needed.")
 					return nil
 				}
 				sp.Stop(fmt.Sprintf("Key not found on this %s account — uploading", def.DisplayName))
 			}
 
-			sp2 := ui.NewSpinner(fmt.Sprintf("Uploading SSH key to %s...", def.DisplayName))
+			sp2 := _ui.NewSpinner(fmt.Sprintf("Uploading SSH key to %s...", def.DisplayName))
 			sp2.Start()
 
 			title := providerResourceName(profileName, def, "ssh", string(p.SSH.KeyType))
@@ -386,14 +386,14 @@ Examples:
 					return nil
 				}
 				sp2.StopError("Failed to upload SSH key")
-				ui.Warning("Upload failed: %v", uploadErr)
-				ui.Print("  You can upload manually at: %s", providerManualKeyURL(def, "ssh"))
+				_ui.Warning("Upload failed: %v", uploadErr)
+				_ui.Print("  You can upload manually at: %s", providerManualKeyURL(def, "ssh"))
 				return uploadErr
 			}
 
 			sp2.Stop(fmt.Sprintf("SSH key uploaded to %s!", def.DisplayName))
-			ui.Detail("Title", title)
-			ctr.AuditLogger.Log(audit.ActionSSHGenerate, profileName,
+			_ui.Detail("Title", title)
+			ctr.AuditLogger.Log(_audit.ActionSSHGenerate, profileName,
 				map[string]string{"action": "upload", "uploaded": "true", "provider": string(def.ID), "title": title}, nil)
 			return nil
 		},
@@ -408,13 +408,13 @@ func defaultSSHAdoptionKeyTypes() []string {
 	return []string{"ed25519", "rsa", "ecdsa"}
 }
 
-func adoptExistingSSHKeyForProfile(profileName string, p *profile.Profile, keyTypes []string) (*ssh.KeyInfo, bool, error) {
+func adoptExistingSSHKeyForProfile(profileName string, p *_profile.Profile, keyTypes []string) (*_ssh.KeyInfo, bool, error) {
 	if p == nil || (p.SSH != nil && strings.TrimSpace(p.SSH.KeyPath) != "") {
 		return nil, false, nil
 	}
 
 	keyProfileName := sshKeyProfileName(profileName, p)
-	var found []*ssh.KeyInfo
+	var found []*_ssh.KeyInfo
 	for _, keyType := range keyTypes {
 		expectedPath, err := ctr.SSHManager.ExpectedKeyPath(keyProfileName, keyType)
 		if err != nil {
@@ -449,9 +449,9 @@ func adoptExistingSSHKeyForProfile(profileName string, p *profile.Profile, keyTy
 	}
 
 	keyInfo := found[0]
-	p.SSH = &profile.SSHConfig{
+	p.SSH = &_profile.SSHConfig{
 		KeyPath:     keyInfo.Path,
-		KeyType:     profile.KeyType(keyInfo.Type),
+		KeyType:     _profile.KeyType(keyInfo.Type),
 		Fingerprint: keyInfo.Fingerprint,
 		Comment:     keyInfo.Comment,
 	}
@@ -461,23 +461,23 @@ func adoptExistingSSHKeyForProfile(profileName string, p *profile.Profile, keyTy
 	return keyInfo, true, nil
 }
 
-func printSSHKeyDetails(keyInfo *ssh.KeyInfo) {
-	ui.Detail("Path", keyInfo.Path)
-	ui.Detail("Type", keyInfo.Type)
-	ui.Detail("Fingerprint", keyInfo.Fingerprint)
-	ui.Blank()
-	ui.Print("Public key:")
-	ui.Print(keyInfo.PublicKey)
+func printSSHKeyDetails(keyInfo *_ssh.KeyInfo) {
+	_ui.Detail("Path", keyInfo.Path)
+	_ui.Detail("Type", keyInfo.Type)
+	_ui.Detail("Fingerprint", keyInfo.Fingerprint)
+	_ui.Blank()
+	_ui.Print("Public key:")
+	_ui.Print(keyInfo.PublicKey)
 }
 
-func uploadSSHKeyToAuthenticatedProviders(ctx context.Context, profileName string, p *profile.Profile, keyInfo *ssh.KeyInfo) {
+func uploadSSHKeyToAuthenticatedProviders(ctx context.Context, profileName string, p *_profile.Profile, keyInfo *_ssh.KeyInfo) {
 	keyType := keyInfo.Type
 	if keyType == "" {
 		keyType = inferSSHKeyTypeFromPath(keyInfo.Path)
 	}
-	for _, def := range authenticatedProvidersForProfile(profileName, p, providerpkg.CapabilitySSHKeys) {
+	for _, def := range authenticatedProvidersForProfile(profileName, p, _provider.CapabilitySSHKeys) {
 		if setupSSHKeyUploadForProvider(ctx, profileName, p, def, keyInfo.PublicKey, keyType) {
-			ctr.AuditLogger.Log(audit.ActionSSHGenerate, profileName,
+			ctr.AuditLogger.Log(_audit.ActionSSHGenerate, profileName,
 				map[string]string{"type": keyType, "path": keyInfo.Path, "uploaded": "true", "provider": string(def.ID)}, nil)
 		}
 	}

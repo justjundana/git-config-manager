@@ -16,16 +16,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	cryptoSvc "github.com/justjundana/git-config-manager/internal/service/crypto"
-	"github.com/justjundana/git-config-manager/internal/tokenstore"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
+	_tokenstore "github.com/justjundana/git-config-manager/internal/tokenstore"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // plainTextConfig returns a config with all token encryption and keychain
 // disabled so that tests exercise the plain-text file storage backend.
-func plainTextConfig() *config.Config {
-	cfg := config.DefaultConfig()
+func plainTextConfig() *_config.Config {
+	cfg := _config.DefaultConfig()
 	cfg.Security.EncryptTokens = false
 	cfg.Security.UseKeychain = false
 	cfg.Security.MasterPassword = false
@@ -40,10 +40,10 @@ func init() {
 }
 
 // newTestTokenStore creates a TokenStore suitable for testing (plain-text).
-func newTestTokenStore(cfg *config.Config) *tokenstore.TokenStore {
-	log := logger.New(logger.LevelError, os.Stderr)
-	crypto := cryptoSvc.NewService()
-	return tokenstore.NewTokenStore(cfg, crypto, log, nil)
+func newTestTokenStore(cfg *_config.Config) *_tokenstore.TokenStore {
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	crypto := _crypto.NewService()
+	return _tokenstore.NewTokenStore(cfg, crypto, log, nil)
 }
 
 func testClient(t *testing.T, handler http.HandlerFunc) *Client {
@@ -56,7 +56,7 @@ func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	return NewClient(cfg, log, ts)
 }
@@ -66,7 +66,7 @@ func TestSaveLoadDeleteToken(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -97,11 +97,11 @@ func TestLoadToken_InvalidFile(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
-	path := filepath.Join(config.GCMDir(), "tokens", "bad")
+	path := filepath.Join(_config.GCMDir(), "tokens", "bad")
 	os.MkdirAll(filepath.Dir(path), 0o700)
 	os.WriteFile(path, []byte(""), 0o600)
 
@@ -116,7 +116,7 @@ func TestDeleteToken_NonExistent(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -130,7 +130,7 @@ func TestSetToken(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -142,7 +142,7 @@ func TestSetToken(t *testing.T) {
 
 func TestWithTokenReturnsTokenScopedClone(t *testing.T) {
 	cfg := plainTextConfig()
-	c := NewClient(cfg, logger.New(logger.LevelError, io.Discard), nil)
+	c := NewClient(cfg, _logger.New(_logger.LevelError, io.Discard), nil)
 	c.SetToken("original")
 
 	clone := c.WithToken("scoped")
@@ -298,7 +298,7 @@ func TestNewClient(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -325,7 +325,7 @@ func TestInitiateDeviceFlow_JSON(t *testing.T) {
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client-id"
 	cfg.GitHub.OAuth.Scopes = []string{"read:user", "user:email"}
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -372,7 +372,7 @@ func TestInitiateDeviceFlow_FormEncoded(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -405,7 +405,7 @@ func TestPollForToken_ImmediateSuccess(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -436,7 +436,7 @@ func TestPollForToken_OAuthError(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -467,7 +467,7 @@ func TestPollForToken_ContextCancelled(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -495,7 +495,7 @@ func TestPollForToken_FormEncoded(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -584,7 +584,7 @@ func TestInitiateDeviceFlow_NetworkError(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -604,7 +604,7 @@ func TestPollForToken_SlowDown(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -666,7 +666,7 @@ func TestGetUser_NetworkError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://localhost:1" // invalid port
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("faketoken")
@@ -726,7 +726,7 @@ func TestDeleteToken_NotExist(t *testing.T) {
 func TestLoadToken_TooShort(t *testing.T) {
 	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {})
 
-	path := filepath.Join(config.GCMDir(), "tokens", "short")
+	path := filepath.Join(_config.GCMDir(), "tokens", "short")
 	os.MkdirAll(filepath.Dir(path), 0o700)
 	os.WriteFile(path, []byte("   \n"), 0o600)
 
@@ -917,7 +917,7 @@ func TestPollForToken_AuthorizationPendingThenSuccess(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -956,7 +956,7 @@ func TestPollForToken_NetworkErrorRecovery(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -990,7 +990,7 @@ func TestInitiateDeviceFlow_MalformedResponse(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1149,7 +1149,7 @@ func TestPollForToken_EmptyTokenAndNoError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1186,7 +1186,7 @@ func TestPollForToken_ReadBodyError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1232,7 +1232,7 @@ func TestApiGet_NetworkError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://127.0.0.1:1" // closed port
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("faketoken")
@@ -1251,7 +1251,7 @@ func TestApiPost_NetworkError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://127.0.0.1:1" // closed port
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("faketoken")
@@ -1277,7 +1277,7 @@ func TestInitiateDeviceFlow_BothParsesFail(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.httpClient = srv.Client()
@@ -1318,7 +1318,7 @@ func TestPollForToken_FormEncodedFallbackV2(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.httpClient = &http.Client{
@@ -1344,7 +1344,7 @@ func TestInitiateDeviceFlow_ReadBodyError(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1371,7 +1371,7 @@ func TestPollForToken_FormEncodedFallbackNoJSON(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1401,7 +1401,7 @@ func TestPollForToken_Timeout(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1434,7 +1434,7 @@ func TestApiGet_DecodeError(t *testing.T) {
 	t.Setenv("HOME", tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("tok")
@@ -1451,7 +1451,7 @@ func TestApiPost_MarshalError(t *testing.T) {
 	t.Setenv("HOME", tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://localhost"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("tok")
@@ -1465,8 +1465,8 @@ func TestApiPost_MarshalError(t *testing.T) {
 
 func TestClearGitCredentials_DefaultServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Should not error even if git is not configured
@@ -1478,8 +1478,8 @@ func TestClearGitCredentials_DefaultServer(t *testing.T) {
 
 func TestClearGitCredentials_CustomServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.ClearGitCredentials("https://github.example.com")
@@ -1490,8 +1490,8 @@ func TestClearGitCredentials_CustomServer(t *testing.T) {
 
 func TestClearGitCredentials_InvalidURL(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Even with a weird URL, should not error (graceful)
@@ -1503,8 +1503,8 @@ func TestClearGitCredentials_InvalidURL(t *testing.T) {
 
 func TestStoreGitCredentials_DefaultServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.StoreGitCredentials("", "testuser", "ghp_faketoken123")
@@ -1518,8 +1518,8 @@ func TestStoreGitCredentials_DefaultServer(t *testing.T) {
 
 func TestStoreGitCredentials_CustomServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.StoreGitCredentials("https://github.example.com", "user", "token123")
@@ -1532,8 +1532,8 @@ func TestStoreGitCredentials_CustomServer(t *testing.T) {
 
 func TestStoreGitCredentials_BareHost(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.StoreGitCredentials("github.com", "user", "token123")
@@ -1546,8 +1546,8 @@ func TestStoreGitCredentials_BareHost(t *testing.T) {
 
 func TestSetGitCredentialUsername_Set(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.SetGitCredentialUsername("https://github.example.com", "testuser")
@@ -1561,8 +1561,8 @@ func TestSetGitCredentialUsername_Set(t *testing.T) {
 
 func TestSetGitCredentialUsername_Unset(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Unset something that doesn't exist — should not error
@@ -1576,8 +1576,8 @@ func TestSetGitCredentialUsername_Unset(t *testing.T) {
 
 func TestClearGitCredentials_BareHost(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Pass a bare host without scheme - exercises Host=="" fallback to Path
@@ -1589,8 +1589,8 @@ func TestClearGitCredentials_BareHost(t *testing.T) {
 
 func TestStoreGitCredentials_EmptyServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Empty server should default to https://github.com
@@ -1602,8 +1602,8 @@ func TestStoreGitCredentials_EmptyServer(t *testing.T) {
 
 func TestClearGitCredentials_EmptyServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.ClearGitCredentials("")
@@ -1614,8 +1614,8 @@ func TestClearGitCredentials_EmptyServer(t *testing.T) {
 
 func TestImportFromGHCLI_NotInstalled(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Set PATH to empty so gh is not found
@@ -1639,8 +1639,8 @@ func TestImportFromGHCLI_Success(t *testing.T) {
 	t.Setenv("PATH", tmp+string(os.PathListSeparator)+oldPath)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	tok, err := c.ImportFromGHCLI()
@@ -1664,8 +1664,8 @@ func TestImportFromGHCLI_EmptyToken(t *testing.T) {
 	t.Setenv("PATH", tmp+string(os.PathListSeparator)+oldPath)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	_, err := c.ImportFromGHCLI()
@@ -1683,7 +1683,7 @@ func TestInitiateDeviceFlow_Non200Status(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1713,7 +1713,7 @@ func TestInitiateDeviceFlow_LargeBodyTruncation(t *testing.T) {
 	t.Setenv("HOME", tmp)
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1746,7 +1746,7 @@ func TestPollForToken_LargeBodyTruncation(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 
@@ -1775,8 +1775,8 @@ func TestPollForToken_LargeBodyTruncation(t *testing.T) {
 
 func TestClearGitCredentials_URLParseError(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.ClearGitCredentials("http://[::1")
@@ -1787,8 +1787,8 @@ func TestClearGitCredentials_URLParseError(t *testing.T) {
 
 func TestStoreGitCredentials_URLParseError(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	err := c.StoreGitCredentials("http://[::1", "user", "token")
@@ -1809,8 +1809,8 @@ func TestClearGitCredentials_CmdRunError(t *testing.T) {
 	}
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Should not return an error (non-fatal)
@@ -1828,8 +1828,8 @@ func TestStoreGitCredentials_CmdRunError(t *testing.T) {
 	}
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Should not return an error (non-fatal)
@@ -1847,8 +1847,8 @@ func TestSetGitCredentialUsername_CmdRunError_NonEmptyUsername(t *testing.T) {
 	}
 
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Should not return an error (non-fatal)
@@ -1864,8 +1864,8 @@ func TestSetGitCredentialUsername_CmdRunError_NonEmptyUsername(t *testing.T) {
 
 func TestSetGitCredentialUsername_EmptyServer(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// Empty server triggers the default "https://github.com" path
@@ -1879,8 +1879,8 @@ func TestSetGitCredentialUsername_EmptyServer(t *testing.T) {
 
 func TestSetGitCredentialUsername_UnsetSuccess(t *testing.T) {
 	cfg := plainTextConfig()
-	log := logger.New(logger.LevelError, os.Stderr)
-	ts := tokenstore.NewTokenStore(cfg, cryptoSvc.NewService(), log, nil)
+	log := _logger.New(_logger.LevelError, os.Stderr)
+	ts := _tokenstore.NewTokenStore(cfg, _crypto.NewService(), log, nil)
 	c := NewClient(cfg, log, ts)
 
 	// First set a credential username so that unset succeeds (doesn't error)
@@ -1902,7 +1902,7 @@ func TestApiGet_InvalidURL(t *testing.T) {
 	t.Setenv("HOME", tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://[::1" // invalid URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("tok")
@@ -1919,7 +1919,7 @@ func TestApiPost_InvalidURL(t *testing.T) {
 	t.Setenv("HOME", tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://[::1" // invalid URL
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 	c.SetToken("tok")
@@ -1946,7 +1946,7 @@ func TestPollForToken_InternalTimeout(t *testing.T) {
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ts := newTestTokenStore(cfg)
 	c := NewClient(cfg, log, ts)
 

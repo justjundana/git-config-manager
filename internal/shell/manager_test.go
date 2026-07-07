@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	return NewManager(log)
 }
 

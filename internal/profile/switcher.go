@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // defaultGitTimeout bounds external git command invocations to prevent hangs
@@ -20,7 +20,7 @@ const defaultGitTimeout = 30 * time.Second
 
 // Test hooks for unreachable OS/IO error paths.
 var (
-	configSaveFn  = config.Save
+	configSaveFn  = _config.Save
 	swGetwdFn     = os.Getwd
 	swWriteFileFn = os.WriteFile
 	swReadFileFn  = os.ReadFile
@@ -28,13 +28,13 @@ var (
 
 // Switcher handles profile activation across different scopes.
 type Switcher struct {
-	cfg     *config.Config
+	cfg     *_config.Config
 	manager *Manager
-	log     *logger.Logger
+	log     *_logger.Logger
 }
 
 // NewSwitcher creates a new profile switcher.
-func NewSwitcher(cfg *config.Config, manager *Manager, log *logger.Logger) *Switcher {
+func NewSwitcher(cfg *_config.Config, manager *Manager, log *_logger.Logger) *Switcher {
 	return &Switcher{
 		cfg:     cfg,
 		manager: manager,
@@ -69,12 +69,12 @@ func (s *Switcher) Activate(name string, scope ActivationScope) error {
 	}
 
 	if err := s.manager.IncrementUsage(name); err != nil {
-		s.log.Warn("Failed to increment usage", logger.F("error", err))
+		s.log.Warn("Failed to increment usage", _logger.F("error", err))
 	}
 
 	s.log.Debug("Profile activated",
-		logger.F("profile", name),
-		logger.F("scope", scope.String()))
+		_logger.F("profile", name),
+		_logger.F("scope", scope.String()))
 	return nil
 }
 
@@ -460,15 +460,15 @@ func (s *Switcher) applyGitConfig(p *Profile, scope string) error {
 			if criticalGitConfigKeys[key] {
 				// Critical field failed — this will cause wrong identity on commits.
 				s.log.Warn("Failed to set git config (critical)",
-					logger.F("key", key),
-					logger.F("scope", scope),
-					logger.F("output", output))
+					_logger.F("key", key),
+					_logger.F("scope", scope),
+					_logger.F("output", output))
 				criticalErrors = append(criticalErrors, fmt.Sprintf("%s: %v", key, err))
 			} else if scope == "--local" {
 				// Non-critical field in local scope — log and continue.
 				s.log.Debug("git config failed (non-critical, skipping)",
-					logger.F("key", key),
-					logger.F("output", output))
+					_logger.F("key", key),
+					_logger.F("output", output))
 				continue
 			} else {
 				return fmt.Errorf("setting %s: %w", key, err)
@@ -492,8 +492,8 @@ func (s *Switcher) applyGitConfig(p *Profile, scope string) error {
 				cmd := exec.CommandContext(ctx, "ssh-add", expanded)
 				if out, err := cmd.CombinedOutput(); err != nil {
 					s.log.Warn("Failed to load SSH key to agent",
-						logger.F("key", p.SSH.KeyPath),
-						logger.F("error", strings.TrimSpace(string(out))))
+						_logger.F("key", p.SSH.KeyPath),
+						_logger.F("error", strings.TrimSpace(string(out))))
 				}
 			}
 		}

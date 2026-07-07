@@ -1,7 +1,9 @@
 // Package provider defines provider-neutral contracts and value types.
 package provider
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	GitHubID    ProviderID = "github"

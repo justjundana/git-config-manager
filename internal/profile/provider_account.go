@@ -1,20 +1,22 @@
 package profile
 
-import providerpkg "github.com/justjundana/git-config-manager/internal/provider"
+import (
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+)
 
 // ProviderAccount returns the account metadata for a provider, including the
 // legacy GitHub field for backward-compatible profiles.
-func ProviderAccount(p *Profile, id providerpkg.ProviderID) ProviderAccountConfig {
+func ProviderAccount(p *Profile, id _provider.ProviderID) ProviderAccountConfig {
 	if p != nil && p.Providers != nil {
 		if account, ok := p.Providers[string(id)]; ok {
 			return account
 		}
 	}
-	if id == providerpkg.GitHubID && p != nil && p.GitHub != nil {
+	if id == _provider.GitHubID && p != nil && p.GitHub != nil {
 		return ProviderAccountConfig{
 			Username:   p.GitHub.Username,
 			TokenPath:  p.GitHub.TokenPath,
-			AuthMethod: providerpkg.AuthMethodLegacy,
+			AuthMethod: _provider.AuthMethodLegacy,
 			UploadKeys: p.GitHub.UploadKeys,
 		}
 	}
@@ -23,7 +25,7 @@ func ProviderAccount(p *Profile, id providerpkg.ProviderID) ProviderAccountConfi
 
 // SetProviderAccount enforces the one-provider-per-profile invariant while
 // preserving backward compatibility for the legacy GitHub profile block.
-func SetProviderAccount(p *Profile, id providerpkg.ProviderID, username, authMethod string) {
+func SetProviderAccount(p *Profile, id _provider.ProviderID, username, authMethod string) {
 	if p == nil {
 		return
 	}
@@ -34,7 +36,7 @@ func SetProviderAccount(p *Profile, id providerpkg.ProviderID, username, authMet
 	account.AuthMethod = authMethod
 	p.Providers[string(id)] = account
 
-	if id == providerpkg.GitHubID {
+	if id == _provider.GitHubID {
 		if p.GitHub == nil {
 			p.GitHub = &GitHubConfig{}
 		}
@@ -45,7 +47,7 @@ func SetProviderAccount(p *Profile, id providerpkg.ProviderID, username, authMet
 }
 
 // ClearProviderAccount removes one provider account from the profile.
-func ClearProviderAccount(p *Profile, id providerpkg.ProviderID) {
+func ClearProviderAccount(p *Profile, id _provider.ProviderID) {
 	if p == nil {
 		return
 	}
@@ -55,7 +57,7 @@ func ClearProviderAccount(p *Profile, id providerpkg.ProviderID) {
 			p.Providers = nil
 		}
 	}
-	if id == providerpkg.GitHubID {
+	if id == _provider.GitHubID {
 		p.GitHub = nil
 	}
 }
@@ -70,23 +72,23 @@ func ClearProviderAccounts(p *Profile) {
 }
 
 // ProviderID returns the single provider selected for the profile.
-func ProviderID(p *Profile) (providerpkg.ProviderID, bool) {
+func ProviderID(p *Profile) (_provider.ProviderID, bool) {
 	if p == nil || HasMultipleProviders(p) {
 		return "", false
 	}
 	if len(p.Providers) == 1 {
 		for id := range p.Providers {
-			return providerpkg.ProviderID(id), true
+			return _provider.ProviderID(id), true
 		}
 	}
 	if p.GitHub != nil {
-		return providerpkg.GitHubID, true
+		return _provider.GitHubID, true
 	}
 	return "", false
 }
 
 // UsesProvider reports whether the profile is scoped to the given provider.
-func UsesProvider(p *Profile, id providerpkg.ProviderID) bool {
+func UsesProvider(p *Profile, id _provider.ProviderID) bool {
 	profileProviderID, ok := ProviderID(p)
 	return ok && profileProviderID == id
 }
@@ -100,7 +102,7 @@ func HasMultipleProviders(p *Profile) bool {
 		return true
 	}
 	if len(p.Providers) == 1 && p.GitHub != nil {
-		_, hasGitHubProvider := p.Providers[string(providerpkg.GitHubID)]
+		_, hasGitHubProvider := p.Providers[string(_provider.GitHubID)]
 		return !hasGitHubProvider
 	}
 	return false

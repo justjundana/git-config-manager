@@ -8,23 +8,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/providerclient"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_providerclient "github.com/justjundana/git-config-manager/internal/providerclient"
 )
 
 const defaultResolveTimeout = 8 * time.Second
 
 // TokenStore is the token persistence surface needed by the auth resolver.
 type TokenStore interface {
-	LoadTokenSet(providerpkg.TokenKey) (providerpkg.TokenSet, error)
-	SaveTokenSet(providerpkg.TokenKey, providerpkg.TokenSet) error
-	DeleteTokenSet(providerpkg.TokenKey) error
+	LoadTokenSet(_provider.TokenKey) (_provider.TokenSet, error)
+	SaveTokenSet(_provider.TokenKey, _provider.TokenSet) error
+	DeleteTokenSet(_provider.TokenKey) error
 }
 
 // Verifier verifies provider tokens without mutating shared clients.
 type Verifier interface {
-	VerifyPAT(ctx context.Context, def providerpkg.Definition, token string) (providerclient.AuthenticatedUser, error)
+	VerifyPAT(ctx context.Context, def _provider.Definition, token string) (_providerclient.AuthenticatedUser, error)
 }
 
 // Manager resolves and mutates source-aware auth state.
@@ -78,7 +78,7 @@ func (m *Manager) Resolve(ctx context.Context, req ResolveRequest) (ProfileAuthS
 		Ownership:    OwnershipUnknown,
 	}
 
-	account := profile.ProviderAccount(req.Profile, req.Provider.ID)
+	account := _profile.ProviderAccount(req.Profile, req.Provider.ID)
 	status.GCMCredential = m.resolveGCMCredential(resolveCtx, req, account)
 	if status.GCMCredential.Present && status.GCMCredential.Username != "" {
 		status.Username = status.GCMCredential.Username
@@ -118,7 +118,7 @@ func (m *Manager) Resolve(ctx context.Context, req ResolveRequest) (ProfileAuthS
 	return status, nil
 }
 
-func (m *Manager) resolveGCMCredential(ctx context.Context, req ResolveRequest, account profile.ProviderAccountConfig) CredentialStatus {
+func (m *Manager) resolveGCMCredential(ctx context.Context, req ResolveRequest, account _profile.ProviderAccountConfig) CredentialStatus {
 	credential := CredentialStatus{
 		Type:      "https",
 		Source:    SourceGCMStore,
@@ -162,7 +162,7 @@ func (m *Manager) resolveGCMCredential(ctx context.Context, req ResolveRequest, 
 	return credential
 }
 
-func (m *Manager) verifyCredential(ctx context.Context, def providerpkg.Definition, credential *CredentialStatus, authenticatedState State) {
+func (m *Manager) verifyCredential(ctx context.Context, def _provider.Definition, credential *CredentialStatus, authenticatedState State) {
 	if credential == nil || credential.Secret == "" || m == nil || m.Verifier == nil {
 		return
 	}
@@ -180,7 +180,7 @@ func (m *Manager) verifyCredential(ctx context.Context, def providerpkg.Definiti
 	}
 }
 
-func inspectSSHCredential(p *profile.Profile) CredentialStatus {
+func inspectSSHCredential(p *_profile.Profile) CredentialStatus {
 	credential := CredentialStatus{Type: "ssh", Source: SourceProfileSSHKey, Ownership: OwnershipUnknown, State: StateUnauthenticated}
 	if p == nil || p.SSH == nil || p.SSH.KeyPath == "" {
 		return credential
@@ -196,7 +196,7 @@ func inspectSSHCredential(p *profile.Profile) CredentialStatus {
 	return credential
 }
 
-func (s *ProfileAuthStatus) applyAccountFindings(account profile.ProviderAccountConfig) {
+func (s *ProfileAuthStatus) applyAccountFindings(account _profile.ProviderAccountConfig) {
 	if account.Username == "" {
 		return
 	}
@@ -210,7 +210,7 @@ func (s *ProfileAuthStatus) applyAccountFindings(account profile.ProviderAccount
 	}
 }
 
-func (s *ProfileAuthStatus) finalize(p *profile.Profile, def providerpkg.Definition) {
+func (s *ProfileAuthStatus) finalize(p *_profile.Profile, def _provider.Definition) {
 	gcmReady := s.GCMCredential.Present && s.GCMCredential.State == StateAuthenticatedGCM
 	externalReady := s.ExternalCredential.Present && s.ExternalCredential.State == StateAuthenticatedExternal
 	gcmBad := s.GCMCredential.Present && (s.GCMCredential.State == StateExpired || s.GCMCredential.State == StateRevoked || s.GCMCredential.State == StateStale)
@@ -275,7 +275,7 @@ func (s *ProfileAuthStatus) finalize(p *profile.Profile, def providerpkg.Definit
 	s.Capabilities = buildCapabilities(p, s)
 }
 
-func buildCapabilities(p *profile.Profile, s *ProfileAuthStatus) []CapabilityStatus {
+func buildCapabilities(p *_profile.Profile, s *ProfileAuthStatus) []CapabilityStatus {
 	httpsSource := SourceUnknown
 	if s.GCMCredential.Present && s.GCMCredential.State == StateAuthenticatedGCM {
 		httpsSource = SourceGCMStore
@@ -351,18 +351,18 @@ func firstNonEmpty(values ...string) string {
 }
 
 // PrimaryHost returns the provider host used in provider-aware token keys.
-func PrimaryHost(def providerpkg.Definition) string {
+func PrimaryHost(def _provider.Definition) string {
 	if len(def.GitHosts) > 0 && def.GitHosts[0] != "" {
-		return providerpkg.NormalizeHost(def.GitHosts[0])
+		return _provider.NormalizeHost(def.GitHosts[0])
 	}
 	if def.WebURL != "" {
-		return providerpkg.NormalizeHost(def.WebURL)
+		return _provider.NormalizeHost(def.WebURL)
 	}
-	return providerpkg.NormalizeHost(def.APIURL)
+	return _provider.NormalizeHost(def.APIURL)
 }
 
 // TokenKey returns the provider-aware token key used by GCM-managed credentials.
-func TokenKey(profileName string, def providerpkg.Definition, p *profile.Profile) providerpkg.TokenKey {
-	account := profile.ProviderAccount(p, def.ID)
-	return providerpkg.TokenKey{Profile: profileName, Provider: def.ID, Host: PrimaryHost(def), Account: account.Account}
+func TokenKey(profileName string, def _provider.Definition, p *_profile.Profile) _provider.TokenKey {
+	account := _profile.ProviderAccount(p, def.ID)
+	return _provider.TokenKey{Profile: profileName, Provider: def.ID, Host: PrimaryHost(def), Account: account.Account}
 }

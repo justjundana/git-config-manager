@@ -3,17 +3,17 @@ package cli
 import (
 	"fmt"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // gitServer returns the git host URL for credential operations.
 func gitServer() string {
 	if ctr != nil && ctr.ProviderRegistry != nil {
-		if def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID); ok {
+		if def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID); ok {
 			return def.CredentialServer()
 		}
 	}
@@ -24,10 +24,10 @@ func gitServer() string {
 	return server
 }
 
-func githubProviderDefinition() (providerpkg.Definition, error) {
-	def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID)
+func githubProviderDefinition() (_provider.Definition, error) {
+	def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID)
 	if !ok {
-		return providerpkg.Definition{}, fmt.Errorf("GitHub provider is not configured")
+		return _provider.Definition{}, fmt.Errorf("GitHub provider is not configured")
 	}
 	return def, nil
 }
@@ -98,17 +98,17 @@ Examples:
 					return fmt.Errorf("could not read token from input\n\n  Make sure you're piping a valid token:\n  echo \"$GH_TOKEN\" | gcm github login %s", profileName)
 				}
 			} else {
-				ui.Header("%s GitHub Login for Profile: %s", ui.IconKey, profileName)
-				ui.Blank()
-				ui.Print("You need a Personal Access Token (PAT) from GitHub.")
-				ui.Blank()
-				ui.Print("To create one:")
-				ui.Print("  1. Go to %s", ui.Cyan("https://github.com/settings/tokens"))
-				ui.Print("  2. Click 'Generate new token (classic)'")
-				ui.Print("  3. Select scopes: repo, admin:public_key, admin:gpg_key")
-				ui.Print("  4. Copy and paste the token below")
-				ui.Blank()
-				token, err = ui.AskPassword("Enter token")
+				_ui.Header("%s GitHub Login for Profile: %s", _ui.IconKey, profileName)
+				_ui.Blank()
+				_ui.Print("You need a Personal Access Token (PAT) from GitHub.")
+				_ui.Blank()
+				_ui.Print("To create one:")
+				_ui.Print("  1. Go to %s", _ui.Cyan("https://github.com/settings/tokens"))
+				_ui.Print("  2. Click 'Generate new token (classic)'")
+				_ui.Print("  3. Select scopes: repo, admin:public_key, admin:gpg_key")
+				_ui.Print("  4. Copy and paste the token below")
+				_ui.Blank()
+				token, err = _ui.AskPassword("Enter token")
 				if err != nil {
 					return fmt.Errorf("could not read token input")
 				}
@@ -119,58 +119,58 @@ Examples:
 			}
 
 			// Verify the token works
-			sp := ui.NewSpinner("Verifying token with GitHub...")
+			sp := _ui.NewSpinner("Verifying token with GitHub...")
 			sp.Start()
 
 			ctr.GitHubClient.SetToken(token)
 			user, err := ctr.GitHubClient.GetUser(cmd.Context())
 			if err != nil {
 				sp.StopError("Token is not valid")
-				ui.Blank()
-				ui.Print("The token you provided was rejected by GitHub.")
-				ui.Print("Common causes:")
-				ui.Print("  • Token was copied incorrectly (missing characters)")
-				ui.Print("  • Token has been revoked or expired")
-				ui.Print("  • Token does not have the required scopes")
-				ui.Blank()
-				ui.Print("Generate a new token at: https://github.com/settings/tokens")
-				ui.Print("Required scopes: repo, admin:public_key, admin:gpg_key")
+				_ui.Blank()
+				_ui.Print("The token you provided was rejected by GitHub.")
+				_ui.Print("Common causes:")
+				_ui.Print("  • Token was copied incorrectly (missing characters)")
+				_ui.Print("  • Token has been revoked or expired")
+				_ui.Print("  • Token does not have the required scopes")
+				_ui.Blank()
+				_ui.Print("Generate a new token at: https://github.com/settings/tokens")
+				_ui.Print("Required scopes: repo, admin:public_key, admin:gpg_key")
 				return fmt.Errorf("token verification failed")
 			}
 			sp.Stop("Token verified!")
 
-			tokenSet := providerpkg.TokenSet{AccessToken: token, AuthMethod: providerpkg.AuthMethodPAT, TokenType: "pat"}
-			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, providerpkg.AuthMethodPAT, !stdinPiped, func() error {
+			tokenSet := _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodPAT, TokenType: "pat"}
+			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, _provider.AuthMethodPAT, !stdinPiped, func() error {
 				return saveProviderToken(profileName, def, p, tokenSet)
 			})
 			if transitionErr != nil {
-				ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName, nil, transitionErr)
+				ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName, nil, transitionErr)
 				return transitionErr
 			}
 			if !ok {
-				ui.Info("Provider change cancelled")
+				_ui.Info("Provider change cancelled")
 				return nil
 			}
 			_ = ctr.GitHubClient.SaveToken(profileName, token)
 
-			ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName,
+			ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName,
 				map[string]string{"user": user.Login, "method": "pat"}, nil)
-			ui.Blank()
+			_ui.Blank()
 			if user.Name != "" {
-				ui.Success("Logged in as %s (%s)", ui.Bold(user.Login), user.Name)
+				_ui.Success("Logged in as %s (%s)", _ui.Bold(user.Login), user.Name)
 			} else {
-				ui.Success("Logged in as %s", ui.Bold(user.Login))
+				_ui.Success("Logged in as %s", _ui.Bold(user.Login))
 			}
 
 			// Only update git credentials if this is the active profile
 			if isActiveProfile(profileName) {
 				configureGitCredentialsForProvider(profileName, p, def, tokenSet)
-				ui.Print("  Git credentials updated — git push/pull will use this account.")
+				_ui.Print("  Git credentials updated — git push/pull will use this account.")
 			} else {
-				ui.Blank()
-				ui.Print("  Note: This is not the active profile.")
-				ui.Print("  Git credentials will be updated when you switch to it:")
-				ui.Print("    gcm use %s", profileName)
+				_ui.Blank()
+				_ui.Print("  Note: This is not the active profile.")
+				_ui.Print("  Git credentials will be updated when you switch to it:")
+				_ui.Print("    gcm use %s", profileName)
 			}
 
 			_ = ctr.ProfileManager.Update(p)
@@ -178,7 +178,7 @@ Examples:
 			activateAsGlobalIfFirst(profileName)
 
 			if !stdinPiped && p != nil {
-				if def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID); ok {
+				if def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID); ok {
 					setupUploadKeysForProvider(cmd.Context(), profileName, p, def)
 				}
 			}
@@ -225,11 +225,11 @@ Examples:
 
 			// Guard: require confirmation when logging out a non-active profile
 			if !isActiveProfile(profileName) && !forceLogout {
-				ui.Warning("Profile %q is not the active profile.", profileName)
-				ui.Blank()
-				confirm, err := ui.AskConfirm(fmt.Sprintf("Are you sure you want to remove the token for %q?", profileName), false)
+				_ui.Warning("Profile %q is not the active profile.", profileName)
+				_ui.Blank()
+				confirm, err := _ui.AskConfirm(fmt.Sprintf("Are you sure you want to remove the token for %q?", profileName), false)
 				if err != nil || !confirm {
-					ui.Info("Cancelled.")
+					_ui.Info("Cancelled.")
 					return nil
 				}
 			}
@@ -238,15 +238,15 @@ Examples:
 			providerDeleteErr := deleteProviderToken(profileName, def, p)
 			legacyDeleteErr := ctr.GitHubClient.DeleteToken(profileName)
 			if hadStoredToken && providerDeleteErr != nil && legacyDeleteErr != nil {
-				ctr.AuditLogger.Log(audit.ActionGitHubLogout, profileName, nil, providerDeleteErr)
+				ctr.AuditLogger.Log(_audit.ActionGitHubLogout, profileName, nil, providerDeleteErr)
 				return fmt.Errorf("could not remove token for profile %q\n\n  The token file may not exist or cannot be accessed.\n  Check with: gcm github status", profileName)
 			}
 
-			ctr.AuditLogger.Log(audit.ActionGitHubLogout, profileName, nil, nil)
+			ctr.AuditLogger.Log(_audit.ActionGitHubLogout, profileName, nil, nil)
 			if hadStoredToken {
-				ui.Success("GitHub token removed for profile %q", profileName)
+				_ui.Success("GitHub token removed for profile %q", profileName)
 			} else {
-				ui.Info("No GitHub token was stored for profile %q.", profileName)
+				_ui.Info("No GitHub token was stored for profile %q.", profileName)
 			}
 
 			if clearGitCreds && isActiveProfile(profileName) {
@@ -254,19 +254,19 @@ Examples:
 				// Clearing credentials for a non-active profile would break the active one.
 				_ = ctr.GitHubClient.SetGitCredentialUsername(def.CredentialServer(), "")
 				if err := ctr.GitHubClient.ClearGitCredentials(gitServer()); err != nil {
-					ui.Warning("Git credentials could not be cleared automatically.")
-					ui.Print("  You may need to clear them manually from your system's credential store.")
+					_ui.Warning("Git credentials could not be cleared automatically.")
+					_ui.Print("  You may need to clear them manually from your system's credential store.")
 				} else {
-					ui.Success("HTTPS Git credentials and username pin cleared for %s.", def.CredentialServer())
-					ui.Print("  SSH remotes and profile SSH keys are unchanged, so git may still work over SSH.")
+					_ui.Success("HTTPS Git credentials and username pin cleared for %s.", def.CredentialServer())
+					_ui.Print("  SSH remotes and profile SSH keys are unchanged, so git may still work over SSH.")
 				}
 			} else if clearGitCreds && !isActiveProfile(profileName) {
-				ui.Print("  Note: Git credentials were not cleared because %q is not the active profile.", profileName)
-				ui.Print("  The active profile's credentials remain intact.")
+				_ui.Print("  Note: Git credentials were not cleared because %q is not the active profile.", profileName)
+				_ui.Print("  The active profile's credentials remain intact.")
 			}
 
-			ui.Blank()
-			ui.Print("To re-authenticate later: gcm github login %s", profileName)
+			_ui.Blank()
+			_ui.Print("To re-authenticate later: gcm github login %s", profileName)
 
 			return nil
 		},
@@ -290,10 +290,10 @@ func newGitHubVerifyCmd() *cobra.Command {
 
 			p, err := ctr.ProfileManager.Get(profileName)
 			if err != nil {
-				ui.Error("profile %q not found", profileName)
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
-				ui.Print("  To create a new profile:   gcm profile create %s -i", profileName)
+				_ui.Error("profile %q not found", profileName)
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
+				_ui.Print("  To create a new profile:   gcm profile create %s -i", profileName)
 				return profileNotFoundError(profileName)
 			}
 			def, err := githubProviderDefinition()
@@ -306,27 +306,27 @@ func newGitHubVerifyCmd() *cobra.Command {
 
 			token, err := loadProviderToken(profileName, def, p)
 			if err != nil {
-				ui.Blank()
-				ui.Print("Profile %q is not authenticated with GitHub yet.", profileName)
-				ui.Blank()
-				ui.Print("To authenticate, use one of these commands:")
-				ui.Print("  gcm github login %s         (Personal Access Token, recommended)", profileName)
-				ui.Print("  gcm github login-oauth %s   (browser-based OAuth)", profileName)
-				ui.Print("  gcm github login-gh %s      (import from GitHub CLI)", profileName)
+				_ui.Blank()
+				_ui.Print("Profile %q is not authenticated with GitHub yet.", profileName)
+				_ui.Blank()
+				_ui.Print("To authenticate, use one of these commands:")
+				_ui.Print("  gcm github login %s         (Personal Access Token, recommended)", profileName)
+				_ui.Print("  gcm github login-oauth %s   (browser-based OAuth)", profileName)
+				_ui.Print("  gcm github login-gh %s      (import from GitHub CLI)", profileName)
 				return fmt.Errorf("profile %q is not authenticated", profileName)
 			}
 			ctr.GitHubClient.SetToken(token.AccessToken)
 			user, err := ctr.GitHubClient.VerifyToken(cmd.Context())
 			if err != nil {
-				ui.Blank()
-				ui.Print("The stored token for profile %q is no longer valid.", profileName)
-				ui.Print("This usually means the token was revoked or has expired.")
-				ui.Blank()
-				ui.Print("To fix, re-authenticate:")
-				ui.Print("  gcm github login %s", profileName)
+				_ui.Blank()
+				_ui.Print("The stored token for profile %q is no longer valid.", profileName)
+				_ui.Print("This usually means the token was revoked or has expired.")
+				_ui.Blank()
+				_ui.Print("To fix, re-authenticate:")
+				_ui.Print("  gcm github login %s", profileName)
 				return fmt.Errorf("token expired or revoked for profile %q", profileName)
 			}
-			ui.Success("Authenticated as %s", ui.Bold(user.Login))
+			_ui.Success("Authenticated as %s", _ui.Bold(user.Login))
 			return nil
 		},
 	}
@@ -342,10 +342,10 @@ func newGitHubUserCmd() *cobra.Command {
 
 			p, err := ctr.ProfileManager.Get(profileName)
 			if err != nil {
-				ui.Error("profile %q not found", profileName)
-				ui.Blank()
-				ui.Print("  To see available profiles: gcm profile list")
-				ui.Print("  To create a new profile:   gcm profile create %s -i", profileName)
+				_ui.Error("profile %q not found", profileName)
+				_ui.Blank()
+				_ui.Print("  To see available profiles: gcm profile list")
+				_ui.Print("  To create a new profile:   gcm profile create %s -i", profileName)
 				return profileNotFoundError(profileName)
 			}
 			def, err := githubProviderDefinition()
@@ -358,27 +358,27 @@ func newGitHubUserCmd() *cobra.Command {
 
 			token, err := loadProviderToken(profileName, def, p)
 			if err != nil {
-				ui.Blank()
-				ui.Print("Profile %q is not authenticated with GitHub yet.", profileName)
-				ui.Blank()
-				ui.Print("To authenticate: gcm github login %s", profileName)
+				_ui.Blank()
+				_ui.Print("Profile %q is not authenticated with GitHub yet.", profileName)
+				_ui.Blank()
+				_ui.Print("To authenticate: gcm github login %s", profileName)
 				return fmt.Errorf("profile %q is not authenticated", profileName)
 			}
 			ctr.GitHubClient.SetToken(token.AccessToken)
 			user, err := ctr.GitHubClient.GetUser(cmd.Context())
 			if err != nil {
-				ui.Blank()
-				ui.Print("Could not fetch your GitHub profile. The token may have expired.")
-				ui.Print("To re-authenticate: gcm github login %s", profileName)
+				_ui.Blank()
+				_ui.Print("Could not fetch your GitHub profile. The token may have expired.")
+				_ui.Print("To re-authenticate: gcm github login %s", profileName)
 				return fmt.Errorf("could not fetch GitHub user info for %q", profileName)
 			}
-			ui.Header("GitHub User: %s", user.Login)
-			ui.Detail("Name", user.Name)
-			ui.Detail("Email", user.Email)
-			ui.Detail("Company", user.Company)
-			ui.Detail("Location", user.Location)
-			ui.Detail("Repos", fmt.Sprintf("%d", user.PublicRepos))
-			ui.Detail("URL", user.HTMLURL)
+			_ui.Header("GitHub User: %s", user.Login)
+			_ui.Detail("Name", user.Name)
+			_ui.Detail("Email", user.Email)
+			_ui.Detail("Company", user.Company)
+			_ui.Detail("Location", user.Location)
+			_ui.Detail("Repos", fmt.Sprintf("%d", user.PublicRepos))
+			_ui.Detail("URL", user.HTMLURL)
 			return nil
 		},
 	}
@@ -414,51 +414,51 @@ Examples:
 				return err
 			}
 
-			ui.Header("%s GitHub OAuth Login for Profile: %s", ui.IconGlobe, profileName)
-			ui.Blank()
+			_ui.Header("%s GitHub OAuth Login for Profile: %s", _ui.IconGlobe, profileName)
+			_ui.Blank()
 
-			sp := ui.NewSpinner("Connecting to GitHub...")
+			sp := _ui.NewSpinner("Connecting to GitHub...")
 			sp.Start()
 
 			dcr, err := ctr.GitHubClient.InitiateDeviceFlow()
 			if err != nil {
 				sp.StopError("Could not connect to GitHub")
-				ui.Blank()
-				ui.Print("This usually means:")
-				ui.Print("  1. The OAuth App client_id in ~/.gcm/config.yaml is not valid")
-				ui.Print("  2. You don't have internet access to github.com")
-				ui.Blank()
-				ui.Print("To fix: update 'github.oauth.client_id' in ~/.gcm/config.yaml")
-				ui.Print("        with a valid GitHub OAuth App client ID.")
-				ui.Blank()
-				ui.Print("Alternative login methods (no OAuth App needed):")
-				ui.Print("  gcm github login %s      (use a Personal Access Token)", profileName)
-				ui.Print("  gcm github login-gh %s   (import from GitHub CLI)", profileName)
+				_ui.Blank()
+				_ui.Print("This usually means:")
+				_ui.Print("  1. The OAuth App client_id in ~/.gcm/config.yaml is not valid")
+				_ui.Print("  2. You don't have internet access to github.com")
+				_ui.Blank()
+				_ui.Print("To fix: update 'github.oauth.client_id' in ~/.gcm/config.yaml")
+				_ui.Print("        with a valid GitHub OAuth App client ID.")
+				_ui.Blank()
+				_ui.Print("Alternative login methods (no OAuth App needed):")
+				_ui.Print("  gcm github login %s      (use a Personal Access Token)", profileName)
+				_ui.Print("  gcm github login-gh %s   (import from GitHub CLI)", profileName)
 				return fmt.Errorf("could not start GitHub OAuth login")
 			}
 
 			sp.Stop("Connected!")
-			ui.Blank()
-			ui.Print("Step 1: Open this URL in your browser:")
-			ui.Print("        %s", ui.Cyan(dcr.VerificationURI))
-			ui.Blank()
-			ui.Print("Step 2: Enter this code when prompted:")
-			ui.Print("        %s", ui.Bold(dcr.UserCode))
-			ui.Blank()
+			_ui.Blank()
+			_ui.Print("Step 1: Open this URL in your browser:")
+			_ui.Print("        %s", _ui.Cyan(dcr.VerificationURI))
+			_ui.Blank()
+			_ui.Print("Step 2: Enter this code when prompted:")
+			_ui.Print("        %s", _ui.Bold(dcr.UserCode))
+			_ui.Blank()
 
-			sp2 := ui.NewSpinner("Waiting for you to authorize in the browser (up to 15 minutes)...")
+			sp2 := _ui.NewSpinner("Waiting for you to authorize in the browser (up to 15 minutes)...")
 			sp2.Start()
 
 			token, err := ctr.GitHubClient.PollForToken(cmd.Context(), dcr.DeviceCode, dcr.Interval)
 			if err != nil {
 				sp2.StopError("Authorization was not completed")
-				ui.Blank()
-				ui.Print("Possible reasons:")
-				ui.Print("  • You didn't approve the request in the browser")
-				ui.Print("  • The code expired (15 minute time limit)")
-				ui.Print("  • You denied the request")
-				ui.Blank()
-				ui.Print("To try again: gcm github login-oauth %s", profileName)
+				_ui.Blank()
+				_ui.Print("Possible reasons:")
+				_ui.Print("  • You didn't approve the request in the browser")
+				_ui.Print("  • The code expired (15 minute time limit)")
+				_ui.Print("  • You denied the request")
+				_ui.Blank()
+				_ui.Print("To try again: gcm github login-oauth %s", profileName)
 				return fmt.Errorf("authorization not completed")
 			}
 
@@ -467,46 +467,46 @@ Examples:
 			ctr.GitHubClient.SetToken(token)
 			user, err := ctr.GitHubClient.GetUser(cmd.Context())
 			if err != nil {
-				ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName, nil, nil)
-				ui.Blank()
-				ui.Warning("Could not verify your GitHub username, so the token was not saved.")
-				ui.Print("  This is usually temporary. Verify later with: gcm github verify %s", profileName)
+				ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName, nil, nil)
+				_ui.Blank()
+				_ui.Warning("Could not verify your GitHub username, so the token was not saved.")
+				_ui.Print("  This is usually temporary. Verify later with: gcm github verify %s", profileName)
 				return nil
 			}
 
-			tokenSet := providerpkg.TokenSet{AccessToken: token, AuthMethod: providerpkg.AuthMethodOAuthDevice, TokenType: "bearer"}
-			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, providerpkg.AuthMethodOAuthDevice, true, func() error {
+			tokenSet := _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodOAuthDevice, TokenType: "bearer"}
+			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, _provider.AuthMethodOAuthDevice, true, func() error {
 				return saveProviderToken(profileName, def, p, tokenSet)
 			})
 			if transitionErr != nil {
-				ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName, nil, transitionErr)
+				ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName, nil, transitionErr)
 				return transitionErr
 			}
 			if !ok {
-				ui.Info("Provider change cancelled")
+				_ui.Info("Provider change cancelled")
 				return nil
 			}
 			_ = ctr.GitHubClient.SaveToken(profileName, token)
 
-			ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName,
+			ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName,
 				map[string]string{"user": user.Login, "method": "oauth"}, nil)
-			ui.Blank()
+			_ui.Blank()
 			if user.Name != "" {
-				ui.Success("Logged in as %s (%s)", ui.Bold(user.Login), user.Name)
+				_ui.Success("Logged in as %s (%s)", _ui.Bold(user.Login), user.Name)
 			} else {
-				ui.Success("Logged in as %s", ui.Bold(user.Login))
+				_ui.Success("Logged in as %s", _ui.Bold(user.Login))
 			}
-			ui.Detail("GitHub Profile", user.HTMLURL)
+			_ui.Detail("GitHub Profile", user.HTMLURL)
 
 			// Only update git credentials if this is the active profile
 			if isActiveProfile(profileName) {
 				configureGitCredentialsForProvider(profileName, p, def, tokenSet)
-				ui.Print("  Git credentials updated — git push/pull will use this account.")
+				_ui.Print("  Git credentials updated — git push/pull will use this account.")
 			} else {
-				ui.Blank()
-				ui.Print("  Note: This is not the active profile.")
-				ui.Print("  Git credentials will be updated when you switch to it:")
-				ui.Print("    gcm use %s", profileName)
+				_ui.Blank()
+				_ui.Print("  Note: This is not the active profile.")
+				_ui.Print("  Git credentials will be updated when you switch to it:")
+				_ui.Print("    gcm use %s", profileName)
 			}
 
 			_ = ctr.ProfileManager.Update(p)
@@ -550,83 +550,83 @@ Examples:
 				return err
 			}
 
-			sp := ui.NewSpinner("Reading token from GitHub CLI...")
+			sp := _ui.NewSpinner("Reading token from GitHub CLI...")
 			sp.Start()
 
 			token, err := ctr.GitHubClient.ImportFromGHCLI()
 			if err != nil {
 				sp.StopError("Could not get token from GitHub CLI")
-				ui.Blank()
-				ui.Print("GCM tried to run 'gh auth token' but it failed.")
-				ui.Blank()
-				ui.Print("Possible causes:")
-				ui.Print("  • GitHub CLI (gh) is not installed")
-				ui.Print("  • GitHub CLI is not logged in yet")
-				ui.Print("  • gh is not in your PATH")
-				ui.Blank()
-				ui.Print("To fix:")
-				ui.Print("  1. Install GitHub CLI: https://cli.github.com")
-				ui.Print("  2. Login: gh auth login")
-				ui.Print("  3. Then retry: gcm github login-gh %s", profileName)
-				ui.Blank()
-				ui.Print("Alternative login methods:")
-				ui.Print("  gcm github login %s         (use a Personal Access Token)", profileName)
-				ui.Print("  gcm github login-oauth %s   (browser-based OAuth)", profileName)
+				_ui.Blank()
+				_ui.Print("GCM tried to run 'gh auth token' but it failed.")
+				_ui.Blank()
+				_ui.Print("Possible causes:")
+				_ui.Print("  • GitHub CLI (gh) is not installed")
+				_ui.Print("  • GitHub CLI is not logged in yet")
+				_ui.Print("  • gh is not in your PATH")
+				_ui.Blank()
+				_ui.Print("To fix:")
+				_ui.Print("  1. Install GitHub CLI: https://cli.github.com")
+				_ui.Print("  2. Login: gh auth login")
+				_ui.Print("  3. Then retry: gcm github login-gh %s", profileName)
+				_ui.Blank()
+				_ui.Print("Alternative login methods:")
+				_ui.Print("  gcm github login %s         (use a Personal Access Token)", profileName)
+				_ui.Print("  gcm github login-oauth %s   (browser-based OAuth)", profileName)
 				return fmt.Errorf("could not import from GitHub CLI")
 			}
 			sp.Stop("Token retrieved from GitHub CLI")
 
 			// Verify
-			sp2 := ui.NewSpinner("Verifying token with GitHub...")
+			sp2 := _ui.NewSpinner("Verifying token with GitHub...")
 			sp2.Start()
 
 			ctr.GitHubClient.SetToken(token)
 			user, err := ctr.GitHubClient.GetUser(cmd.Context())
 			if err != nil {
 				sp2.StopError("Token from GitHub CLI is not valid")
-				ui.Blank()
-				ui.Print("The token from 'gh auth token' was rejected by GitHub.")
-				ui.Print("Your GitHub CLI session may have expired.")
-				ui.Blank()
-				ui.Print("To fix:")
-				ui.Print("  1. Re-login in GitHub CLI: gh auth login")
-				ui.Print("  2. Then retry: gcm github login-gh %s", profileName)
+				_ui.Blank()
+				_ui.Print("The token from 'gh auth token' was rejected by GitHub.")
+				_ui.Print("Your GitHub CLI session may have expired.")
+				_ui.Blank()
+				_ui.Print("To fix:")
+				_ui.Print("  1. Re-login in GitHub CLI: gh auth login")
+				_ui.Print("  2. Then retry: gcm github login-gh %s", profileName)
 				return fmt.Errorf("token from GitHub CLI is not valid")
 			}
 			sp2.Stop("Token verified!")
 
-			tokenSet := providerpkg.TokenSet{AccessToken: token, AuthMethod: providerpkg.AuthMethodLegacy, TokenType: "pat"}
-			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, providerpkg.AuthMethodLegacy, true, func() error {
+			tokenSet := _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodLegacy, TokenType: "pat"}
+			ok, transitionErr := applyProfileProviderTransition(cmd.Context(), profileName, p, def, user.Login, _provider.AuthMethodLegacy, true, func() error {
 				return saveProviderToken(profileName, def, p, tokenSet)
 			})
 			if transitionErr != nil {
-				ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName, nil, transitionErr)
+				ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName, nil, transitionErr)
 				return transitionErr
 			}
 			if !ok {
-				ui.Info("Provider change cancelled")
+				_ui.Info("Provider change cancelled")
 				return nil
 			}
 			_ = ctr.GitHubClient.SaveToken(profileName, token)
 
-			ctr.AuditLogger.Log(audit.ActionGitHubLogin, profileName,
+			ctr.AuditLogger.Log(_audit.ActionGitHubLogin, profileName,
 				map[string]string{"user": user.Login, "method": "gh-cli"}, nil)
-			ui.Blank()
+			_ui.Blank()
 			if user.Name != "" {
-				ui.Success("Logged in as %s (%s) via GitHub CLI", ui.Bold(user.Login), user.Name)
+				_ui.Success("Logged in as %s (%s) via GitHub CLI", _ui.Bold(user.Login), user.Name)
 			} else {
-				ui.Success("Logged in as %s via GitHub CLI", ui.Bold(user.Login))
+				_ui.Success("Logged in as %s via GitHub CLI", _ui.Bold(user.Login))
 			}
 
 			// Only update git credentials if this is the active profile
 			if isActiveProfile(profileName) {
 				configureGitCredentialsForProvider(profileName, p, def, tokenSet)
-				ui.Print("  Git credentials updated — git push/pull will use this account.")
+				_ui.Print("  Git credentials updated — git push/pull will use this account.")
 			} else {
-				ui.Blank()
-				ui.Print("  Note: This is not the active profile.")
-				ui.Print("  Git credentials will be updated when you switch to it:")
-				ui.Print("    gcm use %s", profileName)
+				_ui.Blank()
+				_ui.Print("  Note: This is not the active profile.")
+				_ui.Print("  Git credentials will be updated when you switch to it:")
+				_ui.Print("    gcm use %s", profileName)
 			}
 
 			_ = ctr.ProfileManager.Update(p)
@@ -635,7 +635,7 @@ Examples:
 			activateAsGlobalIfFirst(profileName)
 
 			if p != nil {
-				if def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID); ok {
+				if def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID); ok {
 					setupUploadKeysForProvider(cmd.Context(), profileName, p, def)
 				}
 			}

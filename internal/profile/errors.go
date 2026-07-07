@@ -1,6 +1,8 @@
 package profile
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Error codes for profile operations.
 const (

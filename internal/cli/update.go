@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/pkg/ui"
-	"github.com/justjundana/git-config-manager/pkg/version"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
+	_version "github.com/justjundana/git-config-manager/pkg/version"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 const (
@@ -78,52 +78,52 @@ Examples:
 }
 
 func runUpdate(checkOnly, force, prerelease bool) error {
-	ui.Info("Checking for updates...")
+	_ui.Info("Checking for updates...")
 
 	latest, err := fetchLatestRelease(prerelease)
 	if err != nil {
-		ui.Error("Failed to check for updates: %v", err)
+		_ui.Error("Failed to check for updates: %v", err)
 		return err
 	}
 
-	current := version.Version
+	current := _version.Version
 	if current == "dev" {
-		ui.Warning("Development build detected — updates are not available")
-		ui.Print("  Build from source or use the install script to get a release version.")
+		_ui.Warning("Development build detected — updates are not available")
+		_ui.Print("  Build from source or use the install script to get a release version.")
 		return nil
 	}
 
-	ui.Blank()
-	ui.Detail("Current", current)
-	ui.Detail("Latest", latest.TagName)
+	_ui.Blank()
+	_ui.Detail("Current", current)
+	_ui.Detail("Latest", latest.TagName)
 
 	if latest.PublishedAt != "" {
 		if t, err := time.Parse(time.RFC3339, latest.PublishedAt); err == nil {
-			ui.Detail("Released", t.Format("January 2, 2006"))
+			_ui.Detail("Released", t.Format("January 2, 2006"))
 		}
 	}
-	ui.Blank()
+	_ui.Blank()
 
 	if !force && normalizeVersion(latest.TagName) == normalizeVersion(current) {
-		ui.Success("Already on the latest version!")
-		ui.Print("  Use --force to reinstall the current version.")
+		_ui.Success("Already on the latest version!")
+		_ui.Print("  Use --force to reinstall the current version.")
 		return nil
 	}
 
 	if checkOnly {
 		if normalizeVersion(latest.TagName) != normalizeVersion(current) {
-			ui.Info("Update available: %s → %s", current, latest.TagName)
+			_ui.Info("Update available: %s → %s", current, latest.TagName)
 			if latest.Body != "" {
-				ui.Blank()
-				ui.Print("  %s", ui.Bold("Release Notes:"))
-				ui.Print("  %s", strings.Repeat("─", 40))
+				_ui.Blank()
+				_ui.Print("  %s", _ui.Bold("Release Notes:"))
+				_ui.Print("  %s", strings.Repeat("─", 40))
 				for _, line := range strings.Split(latest.Body, "\n") {
-					ui.Print("  %s", line)
+					_ui.Print("  %s", line)
 				}
-				ui.Print("  %s", strings.Repeat("─", 40))
+				_ui.Print("  %s", strings.Repeat("─", 40))
 			}
-			ui.Blank()
-			ui.Print("  Run 'gcm update' to install this version.")
+			_ui.Blank()
+			_ui.Print("  Run 'gcm update' to install this version.")
 		}
 		return nil
 	}
@@ -154,7 +154,7 @@ func runUpdate(checkOnly, force, prerelease bool) error {
 		}
 	}
 
-	ui.Info("Downloading %s for %s/%s...", latest.TagName, runtime.GOOS, runtime.GOARCH)
+	_ui.Info("Downloading %s for %s/%s...", latest.TagName, runtime.GOOS, runtime.GOARCH)
 
 	currentBinary, err := os.Executable()
 	if err != nil {
@@ -170,7 +170,7 @@ func runUpdate(checkOnly, force, prerelease bool) error {
 	// Download binary to temp file
 	tempFile, err := downloadToTemp(downloadURL, binaryDir)
 	if err != nil {
-		ui.Error("Download failed: %v", err)
+		_ui.Error("Download failed: %v", err)
 		return err
 	}
 	defer func() {
@@ -182,13 +182,13 @@ func runUpdate(checkOnly, force, prerelease bool) error {
 	// Verify checksum if available
 	if checksumsURL != "" {
 		if err := verifyUpdateChecksum(tempFile, assetName, checksumsURL); err != nil {
-			ui.Error("Checksum verification failed: %v", err)
+			_ui.Error("Checksum verification failed: %v", err)
 			os.Remove(tempFile)
 			return err
 		}
-		ui.Success("Checksum verified")
+		_ui.Success("Checksum verified")
 	} else {
-		ui.Warning("Checksums not available for this release — skipping verification")
+		_ui.Warning("Checksums not available for this release — skipping verification")
 	}
 
 	// Replace binary with backup
@@ -199,23 +199,23 @@ func runUpdate(checkOnly, force, prerelease bool) error {
 
 	if err := os.Rename(tempFile, currentBinary); err != nil {
 		// Rollback
-		ui.Warning("Install failed, restoring previous version...")
+		_ui.Warning("Install failed, restoring previous version...")
 		if restoreErr := os.Rename(backupPath, currentBinary); restoreErr != nil {
-			ui.Error("Failed to restore backup — manually restore from %s", backupPath)
+			_ui.Error("Failed to restore backup — manually restore from %s", backupPath)
 			return restoreErr
 		}
 		return fmt.Errorf("failed to install new binary: %w", err)
 	}
 
 	if err := os.Chmod(currentBinary, 0755); err != nil {
-		ui.Warning("Failed to set executable permissions: %v", err)
+		_ui.Warning("Failed to set executable permissions: %v", err)
 	}
 
 	// Clean up backup
 	os.Remove(backupPath)
 
-	ui.Blank()
-	ui.Success("Updated to %s!", latest.TagName)
+	_ui.Blank()
+	_ui.Success("Updated to %s!", latest.TagName)
 	return nil
 }
 
@@ -232,7 +232,7 @@ func fetchLatestRelease(includePrerelease bool) (*githubRelease, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("User-Agent", "gcm/"+version.Version)
+	req.Header.Set("User-Agent", "gcm/"+_version.Version)
 
 	resp, err := updateHTTPClient.Do(req)
 	if err != nil {

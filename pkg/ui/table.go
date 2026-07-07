@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"golang.org/x/term"
+	term "golang.org/x/term"
 )
 
 // ansiRegex matches ANSI escape sequences used for terminal colors/styles.

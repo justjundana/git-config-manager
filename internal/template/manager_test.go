@@ -7,22 +7,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		TemplatesDir: filepath.Join(dir, "templates"),
 	}
 	if err := os.MkdirAll(cfg.TemplatesDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	return NewManager(cfg, fs, log)
 }
 
@@ -315,12 +315,12 @@ func TestSave_ErrorPath(t *testing.T) {
 		t.Skip("cannot test permission denied as root")
 	}
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		TemplatesDir: filepath.Join(dir, "templates"),
 	}
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, fs, log)
 
 	// Create a template first
@@ -448,12 +448,12 @@ func TestDelete_NonExistentTemplate(t *testing.T) {
 
 func TestSave_UnwritableDir(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		TemplatesDir: filepath.Join(dir, "templates"),
 	}
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, fs, log)
 
 	// Create template first
@@ -555,12 +555,12 @@ func TestGet_ReadErrorNotExist(t *testing.T) {
 
 func TestList_InaccessibleDir(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		TemplatesDir: filepath.Join(dir, "templates"),
 	}
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, fs, log)
 
 	// Place an invalid YAML file to trigger the "skipping invalid template" path
@@ -578,13 +578,13 @@ func TestList_InaccessibleDir(t *testing.T) {
 
 func TestList_DirListError(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		// Use a glob pattern that's invalid inside the TemplatesDir
 		TemplatesDir: filepath.Join(dir, "templates["),
 	}
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
-	fs := fileSvc.NewService()
-	log := logger.New(logger.LevelError, os.Stderr)
+	fs := _file.NewService()
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, fs, log)
 
 	_, err := m.List()

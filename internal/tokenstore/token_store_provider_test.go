@@ -8,13 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/provider"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
 )
 
 func TestTokenStore_ProviderTokenSet_SaveLoadDelete(t *testing.T) {
 	ts := newPlainStore(t)
-	key := provider.TokenKey{Profile: "work", Provider: provider.GitLabID, Host: "gitlab.com"}
-	token := provider.TokenSet{AccessToken: "glpat-secret", AuthMethod: provider.AuthMethodPAT, Scopes: []string{"api"}}
+	key := _provider.TokenKey{Profile: "work", Provider: _provider.GitLabID, Host: "gitlab.com"}
+	token := _provider.TokenSet{AccessToken: "glpat-secret", AuthMethod: _provider.AuthMethodPAT, Scopes: []string{"api"}}
 
 	if err := ts.SaveTokenSet(key, token); err != nil {
 		t.Fatalf("SaveTokenSet: %v", err)
@@ -26,7 +26,7 @@ func TestTokenStore_ProviderTokenSet_SaveLoadDelete(t *testing.T) {
 	if loaded.AccessToken != token.AccessToken {
 		t.Fatalf("AccessToken = %q, want %q", loaded.AccessToken, token.AccessToken)
 	}
-	if loaded.AuthMethod != provider.AuthMethodPAT {
+	if loaded.AuthMethod != _provider.AuthMethodPAT {
 		t.Fatalf("AuthMethod = %q", loaded.AuthMethod)
 	}
 	if len(loaded.Scopes) != 1 || loaded.Scopes[0] != "api" {
@@ -43,13 +43,13 @@ func TestTokenStore_ProviderTokenSet_SaveLoadDelete(t *testing.T) {
 
 func TestTokenStore_ProviderTokenSet_DoesNotCollideAcrossProviders(t *testing.T) {
 	ts := newPlainStore(t)
-	githubKey := provider.TokenKey{Profile: "work", Provider: provider.GitHubID, Host: "github.com"}
-	gitlabKey := provider.TokenKey{Profile: "work", Provider: provider.GitLabID, Host: "gitlab.com"}
+	githubKey := _provider.TokenKey{Profile: "work", Provider: _provider.GitHubID, Host: "github.com"}
+	gitlabKey := _provider.TokenKey{Profile: "work", Provider: _provider.GitLabID, Host: "gitlab.com"}
 
-	if err := ts.SaveTokenSet(githubKey, provider.TokenSet{AccessToken: "gh-token", AuthMethod: provider.AuthMethodPAT}); err != nil {
+	if err := ts.SaveTokenSet(githubKey, _provider.TokenSet{AccessToken: "gh-token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("SaveTokenSet github: %v", err)
 	}
-	if err := ts.SaveTokenSet(gitlabKey, provider.TokenSet{AccessToken: "gl-token", AuthMethod: provider.AuthMethodPAT}); err != nil {
+	if err := ts.SaveTokenSet(gitlabKey, _provider.TokenSet{AccessToken: "gl-token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("SaveTokenSet gitlab: %v", err)
 	}
 
@@ -72,21 +72,21 @@ func TestTokenStore_ProviderTokenSet_FallsBackToLegacyGitHubToken(t *testing.T) 
 		t.Fatalf("Save legacy token: %v", err)
 	}
 
-	loaded, err := ts.LoadTokenSet(provider.TokenKey{Profile: "work", Provider: provider.GitHubID, Host: "github.com"})
+	loaded, err := ts.LoadTokenSet(_provider.TokenKey{Profile: "work", Provider: _provider.GitHubID, Host: "github.com"})
 	if err != nil {
 		t.Fatalf("LoadTokenSet fallback: %v", err)
 	}
 	if loaded.AccessToken != "legacy-gh-token" {
 		t.Fatalf("AccessToken = %q", loaded.AccessToken)
 	}
-	if loaded.AuthMethod != provider.AuthMethodLegacy {
+	if loaded.AuthMethod != _provider.AuthMethodLegacy {
 		t.Fatalf("AuthMethod = %q", loaded.AuthMethod)
 	}
 }
 
 func TestTokenStore_ProviderTokenSet_RequiresProvider(t *testing.T) {
 	ts := newPlainStore(t)
-	err := ts.SaveTokenSet(provider.TokenKey{Profile: "work"}, provider.TokenSet{AccessToken: "tok"})
+	err := ts.SaveTokenSet(_provider.TokenKey{Profile: "work"}, _provider.TokenSet{AccessToken: "tok"})
 	if err == nil {
 		t.Fatal("expected error for empty provider")
 	}
@@ -94,31 +94,31 @@ func TestTokenStore_ProviderTokenSet_RequiresProvider(t *testing.T) {
 
 func TestTokenStore_ProviderTokenSet_SaveValidationAndMarshalError(t *testing.T) {
 	ts := newPlainStore(t)
-	key := provider.TokenKey{Profile: "work", Provider: provider.GitLabID}
-	if err := ts.SaveTokenSet(key, provider.TokenSet{}); err == nil || !strings.Contains(err.Error(), "empty") {
+	key := _provider.TokenKey{Profile: "work", Provider: _provider.GitLabID}
+	if err := ts.SaveTokenSet(key, _provider.TokenSet{}); err == nil || !strings.Contains(err.Error(), "empty") {
 		t.Fatalf("empty access token error = %v", err)
 	}
-	if err := ts.SaveTokenSet(provider.TokenKey{Provider: provider.GitLabID}, provider.TokenSet{AccessToken: "tok"}); err == nil || !strings.Contains(err.Error(), "profile") {
+	if err := ts.SaveTokenSet(_provider.TokenKey{Provider: _provider.GitLabID}, _provider.TokenSet{AccessToken: "tok"}); err == nil || !strings.Contains(err.Error(), "profile") {
 		t.Fatalf("empty profile error = %v", err)
 	}
 
 	originalMarshal := marshalTokenSet
 	marshalTokenSet = func(v any) ([]byte, error) { return nil, errors.New("marshal boom") }
 	t.Cleanup(func() { marshalTokenSet = originalMarshal })
-	if err := ts.SaveTokenSet(key, provider.TokenSet{AccessToken: "tok", CreatedAt: time.Now().UTC()}); err == nil || !strings.Contains(err.Error(), "marshaling") {
+	if err := ts.SaveTokenSet(key, _provider.TokenSet{AccessToken: "tok", CreatedAt: time.Now().UTC()}); err == nil || !strings.Contains(err.Error(), "marshaling") {
 		t.Fatalf("marshal error = %v", err)
 	}
 }
 
 func TestTokenStore_ProviderTokenSet_LoadBranches(t *testing.T) {
 	ts := newPlainStore(t)
-	key := provider.TokenKey{Profile: "work", Provider: provider.GitLabID, Host: "gitlab.com"}
+	key := _provider.TokenKey{Profile: "work", Provider: _provider.GitLabID, Host: "gitlab.com"}
 	storageKey, err := providerTokenStorageKey(key)
 	if err != nil {
 		t.Fatalf("providerTokenStorageKey: %v", err)
 	}
 
-	if _, err := ts.LoadTokenSet(provider.TokenKey{Provider: provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "profile") {
+	if _, err := ts.LoadTokenSet(_provider.TokenKey{Provider: _provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "profile") {
 		t.Fatalf("empty profile load error = %v", err)
 	}
 	if _, err := ts.LoadTokenSet(key); err == nil {
@@ -131,7 +131,7 @@ func TestTokenStore_ProviderTokenSet_LoadBranches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadTokenSet raw: %v", err)
 	}
-	if loaded.AccessToken != "raw-token" || loaded.AuthMethod != provider.AuthMethodLegacy {
+	if loaded.AccessToken != "raw-token" || loaded.AuthMethod != _provider.AuthMethodLegacy {
 		t.Fatalf("raw loaded token = %+v", loaded)
 	}
 	if err := ts.saveTokenValue(storageKey, "{"); err != nil {
@@ -150,11 +150,11 @@ func TestTokenStore_ProviderTokenSet_LoadBranches(t *testing.T) {
 
 func TestTokenStore_ProviderTokenSet_DeleteBranches(t *testing.T) {
 	ts := newPlainStore(t)
-	if err := ts.DeleteTokenSet(provider.TokenKey{Provider: provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "profile") {
+	if err := ts.DeleteTokenSet(_provider.TokenKey{Provider: _provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "profile") {
 		t.Fatalf("empty profile delete error = %v", err)
 	}
 
-	key := provider.TokenKey{Profile: "work", Provider: provider.GitLabID, Host: "gitlab.com"}
+	key := _provider.TokenKey{Profile: "work", Provider: _provider.GitLabID, Host: "gitlab.com"}
 	storageKey, err := providerTokenStorageKey(key)
 	if err != nil {
 		t.Fatalf("providerTokenStorageKey: %v", err)
@@ -173,8 +173,8 @@ func TestTokenStore_ProviderTokenSet_DeleteBranches(t *testing.T) {
 		t.Fatalf("delete provider token error = %v", err)
 	}
 
-	githubKey := provider.TokenKey{Profile: "work", Provider: provider.GitHubID, Host: "github.com"}
-	if err := ts.SaveTokenSet(githubKey, provider.TokenSet{AccessToken: "provider-token"}); err != nil {
+	githubKey := _provider.TokenKey{Profile: "work", Provider: _provider.GitHubID, Host: "github.com"}
+	if err := ts.SaveTokenSet(githubKey, _provider.TokenSet{AccessToken: "provider-token"}); err != nil {
 		t.Fatalf("SaveTokenSet github: %v", err)
 	}
 	if err := ts.Save("work", "legacy-token"); err != nil {
@@ -187,27 +187,27 @@ func TestTokenStore_ProviderTokenSet_DeleteBranches(t *testing.T) {
 		t.Fatal("expected legacy token to be deleted")
 	}
 
-	if err := ts.DeleteTokenSet(provider.TokenKey{Profile: "work/slash", Provider: provider.GitHubID, Host: "github.com"}); err == nil || !strings.Contains(err.Error(), "invalid profile") {
+	if err := ts.DeleteTokenSet(_provider.TokenKey{Profile: "work/slash", Provider: _provider.GitHubID, Host: "github.com"}); err == nil || !strings.Contains(err.Error(), "invalid profile") {
 		t.Fatalf("legacy delete error = %v", err)
 	}
 }
 
 func TestProviderTokenStorageKeyAndSafeComponentBranches(t *testing.T) {
-	key, err := providerTokenStorageKey(provider.TokenKey{Profile: " Work ", Provider: provider.GitLabID})
+	key, err := providerTokenStorageKey(_provider.TokenKey{Profile: " Work ", Provider: _provider.GitLabID})
 	if err != nil {
 		t.Fatalf("providerTokenStorageKey default host/account: %v", err)
 	}
 	if key != "work__gitlab__default__default" {
 		t.Fatalf("storage key = %q", key)
 	}
-	key, err = providerTokenStorageKey(provider.TokenKey{Profile: "Wörk", Provider: provider.GitLabID, Host: "GitLab.COM", Account: "Team_1"})
+	key, err = providerTokenStorageKey(_provider.TokenKey{Profile: "Wörk", Provider: _provider.GitLabID, Host: "GitLab.COM", Account: "Team_1"})
 	if err != nil {
 		t.Fatalf("providerTokenStorageKey unicode: %v", err)
 	}
 	if key != "wörk__gitlab__gitlab_com__team_1" {
 		t.Fatalf("unicode storage key = %q", key)
 	}
-	if _, err := providerTokenStorageKey(provider.TokenKey{Profile: "$$$", Provider: provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "invalid") {
+	if _, err := providerTokenStorageKey(_provider.TokenKey{Profile: "$$$", Provider: _provider.GitLabID}); err == nil || !strings.Contains(err.Error(), "invalid") {
 		t.Fatalf("invalid component error = %v", err)
 	}
 	if safeTokenComponent(" --A_b.9-- ") != "--a_b_9--" {

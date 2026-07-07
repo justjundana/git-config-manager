@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
 )
 
 // ValidateProfile validates a profile configuration.
@@ -265,5 +265,5 @@ func isValidEmail(email string) bool {
 }
 
 func expandPath(path string) string {
-	return fileSvc.ExpandPath(path)
+	return _file.ExpandPath(path)
 }

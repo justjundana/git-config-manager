@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"io"
 
-	"golang.org/x/crypto/argon2"
-	"golang.org/x/crypto/pbkdf2"
+	argon2 "golang.org/x/crypto/argon2"
+	pbkdf2 "golang.org/x/crypto/pbkdf2"
 )
 
 const (

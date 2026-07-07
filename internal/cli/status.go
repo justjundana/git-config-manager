@@ -12,10 +12,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 // quickVerifyToken checks token validity with a short deadline without
@@ -46,7 +46,7 @@ func quickVerifyToken(token, apiURL string) error {
 	return nil
 }
 
-func quickVerifyGitLabToken(token providerpkg.TokenSet, apiURL string) error {
+func quickVerifyGitLabToken(token _provider.TokenSet, apiURL string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -74,11 +74,11 @@ func quickVerifyGitLabToken(token providerpkg.TokenSet, apiURL string) error {
 	return nil
 }
 
-func quickVerifyProviderToken(def providerpkg.Definition, token providerpkg.TokenSet) error {
+func quickVerifyProviderToken(def _provider.Definition, token _provider.TokenSet) error {
 	switch def.ID {
-	case providerpkg.GitHubID:
+	case _provider.GitHubID:
 		return quickVerifyToken(token.AccessToken, def.APIURL)
-	case providerpkg.GitLabID:
+	case _provider.GitLabID:
 		return quickVerifyGitLabToken(token, def.APIURL)
 	default:
 		return nil
@@ -110,8 +110,8 @@ SSH keys, and any issues that need attention.`,
 }
 
 func runStatus() error {
-	ui.Header("%s GCM Status", ui.IconRocket)
-	ui.Blank()
+	_ui.Header("%s GCM Status", _ui.IconRocket)
+	_ui.Blank()
 
 	profiles, _ := ctr.ProfileManager.List()
 	currentName, scope, _ := ctr.ProfileSwitcher.Current()
@@ -136,59 +136,59 @@ func runStatus() error {
 	maxNameLen++
 
 	// ─── Active Profile ───
-	ui.Print("  %s", ui.Bold("Active Profile"))
+	_ui.Print("  %s", _ui.Bold("Active Profile"))
 	if currentName == "" {
-		ui.Print("    %s No active profile", ui.Red(ui.IconError))
-		ui.Print("      Activate one: %s", ui.Cyan("gcm use <profile>"))
+		_ui.Print("    %s No active profile", _ui.Red(_ui.IconError))
+		_ui.Print("      Activate one: %s", _ui.Cyan("gcm use <profile>"))
 	} else {
 		p, _ := ctr.ProfileManager.Get(currentName)
 		if p != nil {
-			ui.Print("    %s %s (%s)", ui.Green(ui.IconSuccess), ui.Bold(currentName), scope.String())
-			ui.Print("      %s <%s>", p.Git.User.Name, p.Git.User.Email)
+			_ui.Print("    %s %s (%s)", _ui.Green(_ui.IconSuccess), _ui.Bold(currentName), scope.String())
+			_ui.Print("      %s <%s>", p.Git.User.Name, p.Git.User.Email)
 		} else {
-			ui.Print("    %s %s (%s)", ui.Green(ui.IconSuccess), ui.Bold(currentName), scope.String())
+			_ui.Print("    %s %s (%s)", _ui.Green(_ui.IconSuccess), _ui.Bold(currentName), scope.String())
 		}
 	}
 
-	ui.Blank()
-	ui.Divider()
+	_ui.Blank()
+	_ui.Divider()
 
 	// ─── Profiles ───
-	ui.Blank()
-	ui.Print("  %s %s", ui.Bold("Profiles"), ui.Dim(fmt.Sprintf("(%d total)", len(profiles))))
+	_ui.Blank()
+	_ui.Print("  %s %s", _ui.Bold("Profiles"), _ui.Dim(fmt.Sprintf("(%d total)", len(profiles))))
 
 	if len(profiles) == 0 {
-		ui.Print("    %s No profiles yet", ui.Yellow(ui.IconWarning))
-		ui.Print("      Create one: %s", ui.Cyan("gcm profile create work -i"))
+		_ui.Print("    %s No profiles yet", _ui.Yellow(_ui.IconWarning))
+		_ui.Print("      Create one: %s", _ui.Cyan("gcm profile create work -i"))
 	} else {
 		for _, p := range profiles {
-			marker := ui.Dim("•")
+			marker := _ui.Dim("•")
 			if p.Name == currentName {
-				marker = ui.Green("●")
+				marker = _ui.Green("●")
 			}
 			extras := ""
 			if p.SSH != nil {
-				extras += " " + ui.IconKey
+				extras += " " + _ui.IconKey
 			}
 			if p.GPG != nil {
 				extras += " 🔏"
 			}
-			ui.Print("    %s %-*s %s%s", marker, maxNameLen, p.Name, ui.Dim(p.Git.User.Email), extras)
+			_ui.Print("    %s %-*s %s%s", marker, maxNameLen, p.Name, _ui.Dim(p.Git.User.Email), extras)
 		}
 	}
 
-	ui.Blank()
-	ui.Divider()
+	_ui.Blank()
+	_ui.Divider()
 
 	// ─── Provider Auth ───
-	ui.Blank()
-	ui.Print("  %s", ui.Bold("Provider Auth"))
+	_ui.Blank()
+	_ui.Print("  %s", _ui.Bold("Provider Auth"))
 
 	var issues []string
 	issues = append(issues, migrationIssues...)
 
 	if len(profiles) == 0 {
-		ui.Print("    %s No profiles configured", ui.Dim("—"))
+		_ui.Print("    %s No profiles configured", _ui.Dim("—"))
 	} else {
 		type providerAuthEntry struct {
 			icon     string
@@ -208,22 +208,22 @@ func runStatus() error {
 		for i, p := range profiles {
 			if profileHasMultipleProviders(p) {
 				entries[i] = providerAuthEntry{
-					icon:     ui.Yellow(ui.IconWarning),
+					icon:     _ui.Yellow(_ui.IconWarning),
 					name:     p.Name,
 					provider: "multiple",
-					status:   ui.Yellow("choose one provider"),
+					status:   _ui.Yellow("choose one provider"),
 					hint:     fmt.Sprintf("gcm profile edit %s -i", p.Name),
 				}
 				continue
 			}
 
-			def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper)
+			def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper)
 			if !ok {
 				entries[i] = providerAuthEntry{
-					icon:     ui.Yellow(ui.IconWarning),
+					icon:     _ui.Yellow(_ui.IconWarning),
 					name:     p.Name,
 					provider: "—",
-					status:   ui.Dim("no provider"),
+					status:   _ui.Dim("no provider"),
 					hint:     fmt.Sprintf("gcm connect %s --provider <github|gitlab>", p.Name),
 				}
 				continue
@@ -246,40 +246,40 @@ func runStatus() error {
 			token, loadErr := loadProviderToken(p.Name, def, p)
 			if loadErr != nil || token.AccessToken == "" {
 				entries[i] = providerAuthEntry{
-					icon:     ui.Red(ui.IconError),
+					icon:     _ui.Red(_ui.IconError),
 					name:     p.Name,
 					provider: providerName,
 					username: username,
-					status:   ui.Dim("not authenticated"),
+					status:   _ui.Dim("not authenticated"),
 					hint:     fmt.Sprintf("gcm connect %s --provider %s", p.Name, def.ID),
 				}
 				continue
 			}
 
 			entries[i] = providerAuthEntry{
-				icon:     ui.Yellow(ui.IconWarning),
+				icon:     _ui.Yellow(_ui.IconWarning),
 				name:     p.Name,
 				provider: providerName,
 				username: username,
-				status:   ui.Dim("checking"),
+				status:   _ui.Dim("checking"),
 			}
 
 			wg.Add(1)
 			sem <- struct{}{}
-			go func(idx int, profileName string, def providerpkg.Definition, token providerpkg.TokenSet) {
+			go func(idx int, profileName string, def _provider.Definition, token _provider.TokenSet) {
 				defer wg.Done()
 				defer func() { <-sem }()
 
-				status := ui.Green("valid")
-				icon := ui.Green(ui.IconSuccess)
+				status := _ui.Green("valid")
+				icon := _ui.Green(_ui.IconSuccess)
 				if verifyErr := quickVerifyProviderToken(def, token); verifyErr != nil {
 					if strings.Contains(verifyErr.Error(), "context deadline exceeded") ||
 						strings.Contains(verifyErr.Error(), "timeout") {
-						status = ui.Yellow("timeout")
-						icon = ui.Yellow(ui.IconWarning)
+						status = _ui.Yellow("timeout")
+						icon = _ui.Yellow(_ui.IconWarning)
 					} else {
-						status = ui.Red("expired/invalid")
-						icon = ui.Red(ui.IconError)
+						status = _ui.Red("expired/invalid")
+						icon = _ui.Red(_ui.IconError)
 						authIssues[idx] = append(authIssues[idx], fmt.Sprintf("%s token for %q expired — run: gcm connect %s --provider %s", def.DisplayName, profileName, profileName, def.ID))
 					}
 				}
@@ -305,20 +305,20 @@ func runStatus() error {
 			providerName := padRight(e.provider, maxProviderLen)
 			username := padRight(e.username, maxUserLen)
 			if e.hint != "" {
-				ui.Print("    %s %-*s %s %s %s", e.icon, maxNameLen, e.name, providerName, ui.Dim(username), e.status)
-				ui.Print("      %s %s", ui.Dim("└─"), ui.Cyan(e.hint))
+				_ui.Print("    %s %-*s %s %s %s", e.icon, maxNameLen, e.name, providerName, _ui.Dim(username), e.status)
+				_ui.Print("      %s %s", _ui.Dim("└─"), _ui.Cyan(e.hint))
 			} else {
-				ui.Print("    %s %-*s %s %s %s", e.icon, maxNameLen, e.name, providerName, ui.Dim(username), e.status)
+				_ui.Print("    %s %-*s %s %s %s", e.icon, maxNameLen, e.name, providerName, _ui.Dim(username), e.status)
 			}
 		}
 	}
 
-	ui.Blank()
-	ui.Divider()
+	_ui.Blank()
+	_ui.Divider()
 
 	// ─── SSH Keys ───
-	ui.Blank()
-	ui.Print("  %s", ui.Bold("SSH Keys"))
+	_ui.Blank()
+	_ui.Print("  %s", _ui.Bold("SSH Keys"))
 
 	// Calculate max key filename length
 	maxKeyLen := 0
@@ -339,44 +339,44 @@ func runStatus() error {
 	for _, p := range profiles {
 		if p.SSH != nil && p.SSH.KeyPath != "" {
 			hasKeys = true
-			icon := ui.Green(ui.IconSuccess)
+			icon := _ui.Green(_ui.IconSuccess)
 			if _, statErr := os.Stat(p.SSH.KeyPath); statErr != nil {
-				icon = ui.Red(ui.IconError)
+				icon = _ui.Red(_ui.IconError)
 				issues = append(issues, fmt.Sprintf("SSH key for %q missing at %s", p.Name, p.SSH.KeyPath))
 			}
 			keyName := padRight(filepath.Base(p.SSH.KeyPath), maxKeyLen)
-			ui.Print("    %s %-*s %s %s", icon, maxNameLen, p.Name, keyName, ui.Dim(string(p.SSH.KeyType)))
+			_ui.Print("    %s %-*s %s %s", icon, maxNameLen, p.Name, keyName, _ui.Dim(string(p.SSH.KeyType)))
 		} else {
-			ui.Print("    %s %-*s %s", ui.Dim("—"), maxNameLen, p.Name, ui.Dim("not configured"))
+			_ui.Print("    %s %-*s %s", _ui.Dim("—"), maxNameLen, p.Name, _ui.Dim("not configured"))
 		}
 	}
 
 	if !hasKeys && len(profiles) == 0 {
-		ui.Print("    %s No SSH keys configured", ui.Dim("—"))
-		ui.Print("      Generate: %s", ui.Cyan("gcm ssh generate <profile>"))
+		_ui.Print("    %s No SSH keys configured", _ui.Dim("—"))
+		_ui.Print("      Generate: %s", _ui.Cyan("gcm ssh generate <profile>"))
 	}
 
 	// ─── Issues / Suggestions ───
 	if len(issues) > 0 {
-		ui.Blank()
-		ui.Divider()
-		ui.Blank()
-		ui.Print("  %s %s", ui.Bold("Issues"), ui.Red(fmt.Sprintf("(%d)", len(issues))))
+		_ui.Blank()
+		_ui.Divider()
+		_ui.Blank()
+		_ui.Print("  %s %s", _ui.Bold("Issues"), _ui.Red(fmt.Sprintf("(%d)", len(issues))))
 		for _, issue := range issues {
-			ui.Print("    %s %s", ui.Red(ui.IconArrow), issue)
+			_ui.Print("    %s %s", _ui.Red(_ui.IconArrow), issue)
 		}
 	}
 
 	// ─── Quick Tips (if new user) ───
 	if len(profiles) == 0 {
-		ui.Blank()
-		ui.Divider()
-		ui.Blank()
-		ui.Print("  %s", ui.Bold("Quick Start"))
-		ui.Print("    Run %s for a guided setup wizard", ui.Cyan("gcm setup"))
+		_ui.Blank()
+		_ui.Divider()
+		_ui.Blank()
+		_ui.Print("  %s", _ui.Bold("Quick Start"))
+		_ui.Print("    Run %s for a guided setup wizard", _ui.Cyan("gcm setup"))
 	}
 
-	ui.Blank()
+	_ui.Blank()
 	return nil
 }
 

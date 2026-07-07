@@ -4,15 +4,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 func TestNew(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
 	cfg.TemplatesDir = tmp + "/templates"
 	cfg.CacheDir = tmp + "/cache"
@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 	os.MkdirAll(cfg.ProfilesDir, 0o755)
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
 
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ctr := New(cfg, log)
 
 	if ctr == nil {
@@ -73,7 +73,7 @@ func TestSetMasterPasswordPrompt(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
 	cfg.TemplatesDir = tmp + "/templates"
 	cfg.CacheDir = tmp + "/cache"
@@ -83,7 +83,7 @@ func TestSetMasterPasswordPrompt(t *testing.T) {
 	os.MkdirAll(cfg.ProfilesDir, 0o755)
 	os.MkdirAll(cfg.TemplatesDir, 0o755)
 
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	ctr := New(cfg, log)
 
 	// Verify SetMasterPasswordPrompt doesn't panic and sets the function
@@ -96,7 +96,7 @@ func TestNewUsesDefaultGitLabConfigWhenMissing(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
 	cfg.TemplatesDir = tmp + "/templates"
 	cfg.CacheDir = tmp + "/cache"
@@ -104,7 +104,7 @@ func TestNewUsesDefaultGitLabConfigWhenMissing(t *testing.T) {
 	cfg.GPGHome = tmp + "/gpg"
 	delete(cfg.Providers, "gitlab")
 
-	ctr := New(cfg, logger.New(logger.LevelError, os.Stderr))
+	ctr := New(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	if ctr.GitLabClient == nil {
 		t.Fatal("GitLab client should be initialized from default config")
 	}
@@ -117,7 +117,7 @@ func TestNewAllowsMissingGitHubProviderDefinition(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
 	cfg.TemplatesDir = tmp + "/templates"
 	cfg.CacheDir = tmp + "/cache"
@@ -126,7 +126,7 @@ func TestNewAllowsMissingGitHubProviderDefinition(t *testing.T) {
 	cfg.GitHub.APIURL = ""
 	delete(cfg.Providers, "github")
 
-	ctr := New(cfg, logger.New(logger.LevelError, os.Stderr))
+	ctr := New(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	if ctr.GitHubClient == nil || ctr.ProviderRegistry == nil {
 		t.Fatal("container should still initialize without a GitHub provider definition")
 	}

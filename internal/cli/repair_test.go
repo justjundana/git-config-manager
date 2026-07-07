@@ -10,15 +10,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/container"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/logger"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_container "github.com/justjundana/git-config-manager/internal/container"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 )
 
-func newRepairTestContainer(t *testing.T) *container.Container {
+func newRepairTestContainer(t *testing.T) *_container.Container {
 	t.Helper()
 
 	tmp := t.TempDir()
@@ -32,7 +32,7 @@ func newRepairTestContainer(t *testing.T) *container.Container {
 	t.Setenv("GNUPGHOME", filepath.Join(tmp, "gpg"))
 	t.Setenv("SSH_AUTH_SOCK", "")
 
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(tmp, "profiles")
 	cfg.TemplatesDir = filepath.Join(tmp, "templates")
 	cfg.CacheDir = filepath.Join(tmp, "cache")
@@ -49,10 +49,10 @@ func newRepairTestContainer(t *testing.T) *container.Container {
 		}
 	}
 
-	return container.New(cfg, logger.New(logger.LevelError, io.Discard))
+	return _container.New(cfg, _logger.New(_logger.LevelError, io.Discard))
 }
 
-func withRepairTestContainer(t *testing.T) *container.Container {
+func withRepairTestContainer(t *testing.T) *_container.Container {
 	t.Helper()
 	original := ctr
 	t.Cleanup(func() { ctr = original })
@@ -60,10 +60,10 @@ func withRepairTestContainer(t *testing.T) *container.Container {
 	return ctr
 }
 
-func repairTestProfile(name string) *profile.Profile {
-	return &profile.Profile{
+func repairTestProfile(name string) *_profile.Profile {
+	return &_profile.Profile{
 		Name: name,
-		Git:  profile.GitConfig{User: profile.GitUser{Name: "Test User", Email: name + "@example.test"}},
+		Git:  _profile.GitConfig{User: _profile.GitUser{Name: "Test User", Email: name + "@example.test"}},
 	}
 }
 
@@ -87,9 +87,9 @@ func TestAppendProfileRepairIssuesReportsProviderMissing(t *testing.T) {
 func TestRepairStaleLegacyGitHubBlockReportAndFix(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 	p := repairTestProfile("work")
-	p.GitHub = &profile.GitHubConfig{Username: "stale-gh"}
-	p.Providers = map[string]profile.ProviderAccountConfig{
-		string(providerpkg.GitLabID): {Username: "lab"},
+	p.GitHub = &_profile.GitHubConfig{Username: "stale-gh"}
+	p.Providers = map[string]_profile.ProviderAccountConfig{
+		string(_provider.GitLabID): {Username: "lab"},
 	}
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
@@ -114,7 +114,7 @@ func TestRepairStaleLegacyGitHubBlockReportAndFix(t *testing.T) {
 	if updated.GitHub != nil {
 		t.Fatalf("legacy GitHub block should be removed: %+v", updated.GitHub)
 	}
-	if !profile.UsesProvider(updated, providerpkg.GitLabID) {
+	if !_profile.UsesProvider(updated, _provider.GitLabID) {
 		t.Fatal("GitLab provider should remain selected")
 	}
 }
@@ -122,9 +122,9 @@ func TestRepairStaleLegacyGitHubBlockReportAndFix(t *testing.T) {
 func TestAppendProfileRepairIssuesReportsMultipleProviders(t *testing.T) {
 	withRepairTestContainer(t)
 	p := repairTestProfile("mixed")
-	p.Providers = map[string]profile.ProviderAccountConfig{
-		string(providerpkg.GitHubID): {Username: "gh"},
-		string(providerpkg.GitLabID): {Username: "gl"},
+	p.Providers = map[string]_profile.ProviderAccountConfig{
+		string(_provider.GitHubID): {Username: "gh"},
+		string(_provider.GitLabID): {Username: "gl"},
 	}
 	var issues []repairIssue
 
@@ -143,9 +143,9 @@ func TestAppendProfileRepairIssuesReportsMultipleProviders(t *testing.T) {
 func TestAppendProfileRepairIssuesReportsStaleLegacyGitHubBlock(t *testing.T) {
 	withRepairTestContainer(t)
 	p := repairTestProfile("work")
-	p.GitHub = &profile.GitHubConfig{Username: "stale-gh"}
-	p.Providers = map[string]profile.ProviderAccountConfig{
-		string(providerpkg.GitLabID): {Username: "lab"},
+	p.GitHub = &_profile.GitHubConfig{Username: "stale-gh"}
+	p.Providers = map[string]_profile.ProviderAccountConfig{
+		string(_provider.GitLabID): {Username: "lab"},
 	}
 	var issues []repairIssue
 
@@ -164,8 +164,8 @@ func TestAppendProfileRepairIssuesReportsStaleLegacyGitHubBlock(t *testing.T) {
 func TestAppendProfileRepairIssuesReportsLegacySSHKeyName(t *testing.T) {
 	withRepairTestContainer(t)
 	p := repairTestProfile("work")
-	profile.SetProviderAccount(p, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
-	p.SSH = &profile.SSHConfig{KeyPath: filepath.Join(t.TempDir(), "id_ed25519_work"), KeyType: "ed25519"}
+	_profile.SetProviderAccount(p, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
+	p.SSH = &_profile.SSHConfig{KeyPath: filepath.Join(t.TempDir(), "id_ed25519_work"), KeyType: "ed25519"}
 	var issues []repairIssue
 
 	appendProfileRepairIssues(nil, func(issue repairIssue) {
@@ -176,7 +176,7 @@ func TestAppendProfileRepairIssuesReportsLegacySSHKeyName(t *testing.T) {
 		t.Fatalf("issues = %d, want 1", len(issues))
 	}
 	issue := issues[0]
-	if issue.Code != "ssh_key_name_legacy" || !issue.Fixable || issue.Provider != string(providerpkg.GitLabID) {
+	if issue.Code != "ssh_key_name_legacy" || !issue.Fixable || issue.Provider != string(_provider.GitLabID) {
 		t.Fatalf("issue = %+v, want GitLab ssh_key_name_legacy", issue)
 	}
 	if !strings.Contains(issue.Action, "id_ed25519_work_gitlab") {
@@ -187,14 +187,14 @@ func TestAppendProfileRepairIssuesReportsLegacySSHKeyName(t *testing.T) {
 func TestAppendLegacyGitHubTokenIssueMigratesProviderAwareToken(t *testing.T) {
 	ctr := withRepairTestContainer(t)
 	p := repairTestProfile("work")
-	profile.SetProviderAccount(p, providerpkg.GitHubID, "octo", providerpkg.AuthMethodPAT)
+	_profile.SetProviderAccount(p, _provider.GitHubID, "octo", _provider.AuthMethodPAT)
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
 	if err := ctr.GitHubClient.SaveToken("work", "legacy-token"); err != nil {
 		t.Fatalf("save legacy token: %v", err)
 	}
-	def, ok := ctr.ProviderRegistry.Get(providerpkg.GitHubID)
+	def, ok := ctr.ProviderRegistry.Get(_provider.GitHubID)
 	if !ok {
 		t.Fatal("GitHub provider missing")
 	}
@@ -219,7 +219,7 @@ func TestAppendLegacyGitHubTokenIssueMigratesProviderAwareToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load provider-aware token: %v", err)
 	}
-	if token.AccessToken != "legacy-token" || token.AuthMethod != providerpkg.AuthMethodLegacy {
+	if token.AccessToken != "legacy-token" || token.AuthMethod != _provider.AuthMethodLegacy {
 		t.Fatalf("migrated token = %+v", token)
 	}
 	if legacyToken, err := ctr.GitHubClient.LoadToken("work"); err == nil && legacyToken != "" {
@@ -237,8 +237,8 @@ func TestRunRepairRejectsFixJSONWithoutYes(t *testing.T) {
 
 func TestBuildRepairReportReportsProfileIssuesWithoutCredentialHelperChecks(t *testing.T) {
 	ctr := withRepairTestContainer(t)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub"})
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab"})
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub"})
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab"})
 	if err := ctr.ProfileManager.Create(repairTestProfile("work")); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
@@ -257,16 +257,16 @@ func TestBuildRepairReportReportsProfileIssuesWithoutCredentialHelperChecks(t *t
 
 func TestAppendCredentialHelperIssuesReportsMissingProviderHostReadOnly(t *testing.T) {
 	ctr := withRepairTestContainer(t)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub"})
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab"})
-	fakeProviderID := providerpkg.ProviderID("repair-test")
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub"})
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab"})
+	fakeProviderID := _provider.ProviderID("repair-test")
 	fakeHost := fmt.Sprintf("repair-%s.invalid", strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")))
-	ctr.ProviderRegistry.Register(providerpkg.Definition{
+	ctr.ProviderRegistry.Register(_provider.Definition{
 		ID:           fakeProviderID,
 		DisplayName:  "Repair Test",
 		WebURL:       "https://" + fakeHost,
 		GitHosts:     []string{fakeHost},
-		Capabilities: providerpkg.CapabilitySet{providerpkg.CapabilityCredentialHelper: true},
+		Capabilities: _provider.CapabilitySet{_provider.CapabilityCredentialHelper: true},
 	})
 	var issues []repairIssue
 
@@ -351,16 +351,16 @@ func TestOutputRepairReportText(t *testing.T) {
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 	original := os.Stdout
-	originalUIOut := ui.Out
+	originalUIOut := _ui.Out
 	readEnd, writeEnd, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe stdout: %v", err)
 	}
 	os.Stdout = writeEnd
-	ui.Out = writeEnd
+	_ui.Out = writeEnd
 	defer func() {
 		os.Stdout = original
-		ui.Out = originalUIOut
+		_ui.Out = originalUIOut
 	}()
 
 	fn()

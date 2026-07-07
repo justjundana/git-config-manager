@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
 // Test hooks for unreachable OS/IO error paths.
@@ -42,12 +42,12 @@ var (
 
 // Manager handles backup and restore operations.
 type Manager struct {
-	cfg *config.Config
-	log *logger.Logger
+	cfg *_config.Config
+	log *_logger.Logger
 }
 
 // NewManager creates a new backup manager.
-func NewManager(cfg *config.Config, log *logger.Logger) *Manager {
+func NewManager(cfg *_config.Config, log *_logger.Logger) *Manager {
 	return &Manager{cfg: cfg, log: log}
 }
 
@@ -71,7 +71,7 @@ func (m *Manager) Create() (*BackupInfo, error) {
 		return nil, err
 	}
 
-	backupDir := filepath.Join(config.GCMDir(), "backups")
+	backupDir := filepath.Join(_config.GCMDir(), "backups")
 	if err := os.MkdirAll(backupDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating backup directory: %w", err)
 	}
@@ -94,14 +94,14 @@ func (m *Manager) Create() (*BackupInfo, error) {
 	gzw := gzip.NewWriter(f)
 	tw := tar.NewWriter(gzw)
 
-	gcmDir := config.GCMDir()
+	gcmDir := _config.GCMDir()
 	profileCount := 0
 	templateCount := 0
 
 	// Backup config file
 	configPath := filepath.Join(gcmDir, "config.yaml")
 	if err := m.addToArchive(tw, configPath, "config.yaml"); err != nil {
-		m.log.Debug("No config to backup", logger.F("error", err))
+		m.log.Debug("No config to backup", _logger.F("error", err))
 	}
 
 	// Backup profiles
@@ -112,7 +112,7 @@ func (m *Manager) Create() (*BackupInfo, error) {
 				src := filepath.Join(profilesDir, entry.Name())
 				dst := filepath.Join("profiles", entry.Name())
 				if err := m.addToArchive(tw, src, dst); err != nil {
-					m.log.Warn("Failed to backup profile", logger.F("file", entry.Name()))
+					m.log.Warn("Failed to backup profile", _logger.F("file", entry.Name()))
 					continue
 				}
 				profileCount++
@@ -128,7 +128,7 @@ func (m *Manager) Create() (*BackupInfo, error) {
 				src := filepath.Join(templatesDir, entry.Name())
 				dst := filepath.Join("templates", entry.Name())
 				if err := m.addToArchive(tw, src, dst); err != nil {
-					m.log.Warn("Failed to backup template", logger.F("file", entry.Name()))
+					m.log.Warn("Failed to backup template", _logger.F("file", entry.Name()))
 					continue
 				}
 				templateCount++
@@ -151,9 +151,9 @@ func (m *Manager) Create() (*BackupInfo, error) {
 	}
 
 	m.log.Debug("Backup created",
-		logger.F("path", backupPath),
-		logger.F("profiles", profileCount),
-		logger.F("templates", templateCount))
+		_logger.F("path", backupPath),
+		_logger.F("profiles", profileCount),
+		_logger.F("templates", templateCount))
 
 	success = true
 	info := &BackupInfo{
@@ -181,16 +181,16 @@ func (m *Manager) enforceRetention() {
 	if m.cfg.Backup.RetentionDays > 0 {
 		cutoff := time.Now().AddDate(0, 0, -m.cfg.Backup.RetentionDays)
 		if removed, err := m.PruneOlderThan(cutoff); err != nil {
-			m.log.Warn("Failed to prune backups by age", logger.F("error", err))
+			m.log.Warn("Failed to prune backups by age", _logger.F("error", err))
 		} else if removed > 0 {
-			m.log.Debug("Pruned backups by age", logger.F("removed", removed))
+			m.log.Debug("Pruned backups by age", _logger.F("removed", removed))
 		}
 	}
 	if m.cfg.Backup.MaxBackups > 0 {
 		if removed, err := m.Prune(m.cfg.Backup.MaxBackups); err != nil {
-			m.log.Warn("Failed to prune backups by count", logger.F("error", err))
+			m.log.Warn("Failed to prune backups by count", _logger.F("error", err))
 		} else if removed > 0 {
-			m.log.Debug("Pruned backups by count", logger.F("removed", removed))
+			m.log.Debug("Pruned backups by count", _logger.F("removed", removed))
 		}
 	}
 }
@@ -203,7 +203,7 @@ func (m *Manager) enforceRetention() {
 const maxExtractSize = 10 << 20 // 10 MiB per file
 
 func (m *Manager) Restore(backupPath string) error {
-	gcmDir := config.GCMDir()
+	gcmDir := _config.GCMDir()
 	gcmDirAbs, err := backupAbsFn(gcmDir)
 	if err != nil {
 		return fmt.Errorf("resolving GCM dir: %w", err)
@@ -225,7 +225,7 @@ func (m *Manager) Restore(backupPath string) error {
 		return err
 	}
 
-	m.log.Debug("Backup restored", logger.F("path", backupPath))
+	m.log.Debug("Backup restored", _logger.F("path", backupPath))
 	return nil
 }
 
@@ -265,8 +265,8 @@ func (m *Manager) extractArchive(backupPath, stagingDir string) error {
 		// special entries; they could otherwise point outside the data dir.
 		if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeDir {
 			m.log.Warn("Skipping unsupported archive entry",
-				logger.F("name", header.Name),
-				logger.F("type", header.Typeflag))
+				_logger.F("name", header.Name),
+				_logger.F("type", header.Typeflag))
 			continue
 		}
 
@@ -430,7 +430,7 @@ func (m *Manager) applyStagedRestore(stagingDir, gcmDirAbs string) error {
 
 // List returns all available backups sorted by date (newest first).
 func (m *Manager) List() ([]BackupInfo, error) {
-	backupDir := filepath.Join(config.GCMDir(), "backups")
+	backupDir := filepath.Join(_config.GCMDir(), "backups")
 	entries, err := backupReadDirFn(backupDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -446,7 +446,7 @@ func (m *Manager) List() ([]BackupInfo, error) {
 		}
 		info, err := entry.Info()
 		if err != nil {
-			m.log.Warn("Failed to stat backup file", logger.F("name", entry.Name()), logger.F("error", err))
+			m.log.Warn("Failed to stat backup file", _logger.F("name", entry.Name()), _logger.F("error", err))
 			continue
 		}
 		backups = append(backups, BackupInfo{
@@ -481,13 +481,13 @@ func (m *Manager) Prune(keep int) (int, error) {
 	removed := 0
 	for _, b := range backups[keep:] {
 		if err := backupRemoveFn(b.Path); err != nil {
-			m.log.Warn("Failed to remove backup", logger.F("path", b.Path))
+			m.log.Warn("Failed to remove backup", _logger.F("path", b.Path))
 			continue
 		}
 		removed++
 	}
 
-	m.log.Debug("Backups pruned", logger.F("removed", removed), logger.F("kept", keep))
+	m.log.Debug("Backups pruned", _logger.F("removed", removed), _logger.F("kept", keep))
 	return removed, nil
 }
 
@@ -504,7 +504,7 @@ func (m *Manager) PruneOlderThan(cutoff time.Time) (int, error) {
 			continue
 		}
 		if err := backupRemoveFn(backup.Path); err != nil {
-			m.log.Warn("Failed to remove expired backup", logger.F("path", backup.Path), logger.F("error", err))
+			m.log.Warn("Failed to remove expired backup", _logger.F("path", backup.Path), _logger.F("error", err))
 			continue
 		}
 		removed++

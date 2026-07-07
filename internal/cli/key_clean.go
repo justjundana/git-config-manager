@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/internal/keyledger"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_keyledger "github.com/justjundana/git-config-manager/internal/keyledger"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newSSHCleanCmd() *cobra.Command {
@@ -44,7 +44,7 @@ Examples:
 				return err
 			}
 
-			var orphans []keyledger.SSHEntry
+			var orphans []_keyledger.SSHEntry
 			for _, entry := range data.SSH {
 				if _, used := referenced[normalizeKeyPath(entry.KeyPath)]; used {
 					continue
@@ -53,29 +53,29 @@ Examples:
 			}
 
 			if len(orphans) == 0 {
-				ui.Info("No unused GCM-generated SSH keys to clean")
+				_ui.Info("No unused GCM-generated SSH keys to clean")
 				return nil
 			}
 
-			ui.Warning("The following GCM-generated SSH keys are not used by any profile:")
-			ui.Blank()
+			_ui.Warning("The following GCM-generated SSH keys are not used by any profile:")
+			_ui.Blank()
 			headers := []string{"Profile", "Key", "Fingerprint"}
 			var rows [][]string
 			for _, e := range orphans {
 				rows = append(rows, []string{e.Profile, e.KeyPath, e.Fingerprint})
 			}
-			ui.SimpleTable(headers, rows)
-			ui.Blank()
+			_ui.SimpleTable(headers, rows)
+			_ui.Blank()
 
 			if dryRun {
-				ui.Info("Dry run — no keys were removed")
+				_ui.Info("Dry run — no keys were removed")
 				return nil
 			}
 
 			if !yes {
-				confirm, err := ui.AskConfirm(fmt.Sprintf("Delete these %d SSH key(s) from disk?", len(orphans)), false)
+				confirm, err := _ui.AskConfirm(fmt.Sprintf("Delete these %d SSH key(s) from disk?", len(orphans)), false)
 				if err != nil || !confirm {
-					ui.Info("Cancelled")
+					_ui.Info("Cancelled")
 					return nil
 				}
 			}
@@ -83,21 +83,21 @@ Examples:
 			removed := 0
 			for _, e := range orphans {
 				if err := removeSSHKeyFiles(e.KeyPath); err != nil {
-					ui.Warning("Could not remove %s: %v", e.KeyPath, err)
+					_ui.Warning("Could not remove %s: %v", e.KeyPath, err)
 					continue
 				}
 				ctr.SSHManager.RemoveFromAgent(e.KeyPath)
 				if err := ctr.KeyLedger.RemoveSSH(e.KeyPath); err != nil {
-					ui.Warning("Removed key files but could not update ledger for %s: %v", e.KeyPath, err)
+					_ui.Warning("Removed key files but could not update ledger for %s: %v", e.KeyPath, err)
 				}
-				ctr.AuditLogger.Log(audit.ActionSSHGenerate, e.Profile,
+				ctr.AuditLogger.Log(_audit.ActionSSHGenerate, e.Profile,
 					map[string]string{"action": "clean", "path": e.KeyPath}, nil)
-				ui.Success("Removed SSH key %s", e.KeyPath)
+				_ui.Success("Removed SSH key %s", e.KeyPath)
 				removed++
 			}
 
-			ui.Blank()
-			ui.Success("Cleaned %d SSH key(s)", removed)
+			_ui.Blank()
+			_ui.Success("Cleaned %d SSH key(s)", removed)
 			return nil
 		},
 	}
@@ -136,7 +136,7 @@ Examples:
 				return err
 			}
 
-			var orphans []keyledger.GPGEntry
+			var orphans []_keyledger.GPGEntry
 			for _, entry := range data.GPG {
 				if gpgKeyReferenced(entry, referenced) {
 					continue
@@ -145,34 +145,34 @@ Examples:
 			}
 
 			if len(orphans) == 0 {
-				ui.Info("No unused GCM-generated GPG keys to clean")
+				_ui.Info("No unused GCM-generated GPG keys to clean")
 				return nil
 			}
 
-			ui.Warning("The following GCM-generated GPG keys are not used by any profile:")
-			ui.Blank()
+			_ui.Warning("The following GCM-generated GPG keys are not used by any profile:")
+			_ui.Blank()
 			headers := []string{"Profile", "Key ID", "Fingerprint"}
 			var rows [][]string
 			for _, e := range orphans {
 				rows = append(rows, []string{e.Profile, e.KeyID, e.Fingerprint})
 			}
-			ui.SimpleTable(headers, rows)
-			ui.Blank()
+			_ui.SimpleTable(headers, rows)
+			_ui.Blank()
 
 			if dryRun {
-				ui.Info("Dry run — no keys were removed")
+				_ui.Info("Dry run — no keys were removed")
 				return nil
 			}
 
 			if !ctr.GPGManager.IsInstalled() {
-				ui.Warning("GPG is not installed — cannot delete keys from the keyring")
+				_ui.Warning("GPG is not installed — cannot delete keys from the keyring")
 				return nil
 			}
 
 			if !yes {
-				confirm, err := ui.AskConfirm(fmt.Sprintf("Delete these %d GPG key(s) from the keyring?", len(orphans)), false)
+				confirm, err := _ui.AskConfirm(fmt.Sprintf("Delete these %d GPG key(s) from the keyring?", len(orphans)), false)
 				if err != nil || !confirm {
-					ui.Info("Cancelled")
+					_ui.Info("Cancelled")
 					return nil
 				}
 			}
@@ -180,20 +180,20 @@ Examples:
 			removed := 0
 			for _, e := range orphans {
 				if err := ctr.GPGManager.Delete(e.KeyID); err != nil {
-					ui.Warning("Could not delete GPG key %s: %v", e.KeyID, err)
+					_ui.Warning("Could not delete GPG key %s: %v", e.KeyID, err)
 					continue
 				}
 				if err := ctr.KeyLedger.RemoveGPG(e.KeyID); err != nil {
-					ui.Warning("Deleted key but could not update ledger for %s: %v", e.KeyID, err)
+					_ui.Warning("Deleted key but could not update ledger for %s: %v", e.KeyID, err)
 				}
-				ctr.AuditLogger.Log(audit.ActionGPGGenerate, e.Profile,
+				ctr.AuditLogger.Log(_audit.ActionGPGGenerate, e.Profile,
 					map[string]string{"action": "clean", "key_id": e.KeyID}, nil)
-				ui.Success("Removed GPG key %s", e.KeyID)
+				_ui.Success("Removed GPG key %s", e.KeyID)
 				removed++
 			}
 
-			ui.Blank()
-			ui.Success("Cleaned %d GPG key(s)", removed)
+			_ui.Blank()
+			_ui.Success("Cleaned %d GPG key(s)", removed)
 			return nil
 		},
 	}
@@ -238,7 +238,7 @@ func referencedGPGKeyIDs() (map[string]struct{}, error) {
 // gpgKeyReferenced reports whether the ledger entry matches any profile-referenced
 // key ID. A profile may store a short key ID while the ledger holds a longer ID
 // or fingerprint, so suffix matching is used in both directions.
-func gpgKeyReferenced(entry keyledger.GPGEntry, referenced map[string]struct{}) bool {
+func gpgKeyReferenced(entry _keyledger.GPGEntry, referenced map[string]struct{}) bool {
 	for ref := range referenced {
 		if ref == entry.KeyID {
 			return true
@@ -254,11 +254,11 @@ func gpgKeyReferenced(entry keyledger.GPGEntry, referenced map[string]struct{}) 
 }
 
 func normalizeKeyPath(path string) string {
-	return filepath.Clean(fileSvc.ExpandPath(strings.TrimSpace(path)))
+	return filepath.Clean(_file.ExpandPath(strings.TrimSpace(path)))
 }
 
 func removeSSHKeyFiles(keyPath string) error {
-	expanded := fileSvc.ExpandPath(keyPath)
+	expanded := _file.ExpandPath(keyPath)
 	var firstErr error
 	if err := os.Remove(expanded); err != nil && !os.IsNotExist(err) {
 		firstErr = err

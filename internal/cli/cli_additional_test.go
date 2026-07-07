@@ -13,18 +13,18 @@ import (
 	"testing/iotest"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/container"
-	"github.com/justjundana/git-config-manager/internal/github"
-	"github.com/justjundana/git-config-manager/internal/gitlab"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/providerclient"
-	templatepkg "github.com/justjundana/git-config-manager/internal/template"
-	"github.com/justjundana/git-config-manager/pkg/logger"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_container "github.com/justjundana/git-config-manager/internal/container"
+	_github "github.com/justjundana/git-config-manager/internal/github"
+	_gitlab "github.com/justjundana/git-config-manager/internal/gitlab"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_providerclient "github.com/justjundana/git-config-manager/internal/providerclient"
+	_template "github.com/justjundana/git-config-manager/internal/template"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func runRootCommand(t *testing.T, args ...string) error {
@@ -79,8 +79,8 @@ func globalGitConfig(t *testing.T, key string) (string, bool) {
 
 func setUIPromptInput(t *testing.T, input string) {
 	t.Helper()
-	originalIn := ui.PromptIn
-	originalOut := ui.PromptOut
+	originalIn := _ui.PromptIn
+	originalOut := _ui.PromptOut
 	originalStdin := os.Stdin
 	readEnd, writeEnd, err := os.Pipe()
 	if err != nil {
@@ -90,11 +90,11 @@ func setUIPromptInput(t *testing.T, input string) {
 		t.Fatalf("close prompt stdin writer: %v", err)
 	}
 	os.Stdin = readEnd
-	ui.PromptIn = iotest.OneByteReader(strings.NewReader(input))
-	ui.PromptOut = io.Discard
+	_ui.PromptIn = iotest.OneByteReader(strings.NewReader(input))
+	_ui.PromptOut = io.Discard
 	t.Cleanup(func() {
-		ui.PromptIn = originalIn
-		ui.PromptOut = originalOut
+		_ui.PromptIn = originalIn
+		_ui.PromptOut = originalOut
 		os.Stdin = originalStdin
 		readEnd.Close()
 	})
@@ -104,7 +104,7 @@ func TestSetContainerAndRootCommandShape(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 
-	c := &container.Container{}
+	c := &_container.Container{}
 	SetContainer(c)
 	if ctr != c {
 		t.Fatal("SetContainer did not install container")
@@ -189,31 +189,31 @@ func TestProviderHelperBranches(t *testing.T) {
 	if got := providerNames(nil); got != "none" {
 		t.Fatalf("providerNames(nil) = %q", got)
 	}
-	if got := providerNames([]providerpkg.Definition{{DisplayName: "GitHub"}, {DisplayName: "GitLab"}}); got != "GitHub, GitLab" {
+	if got := providerNames([]_provider.Definition{{DisplayName: "GitHub"}, {DisplayName: "GitLab"}}); got != "GitHub, GitLab" {
 		t.Fatalf("providerNames = %q", got)
 	}
-	if got := firstProviderHost(providerpkg.Definition{GitHosts: []string{"HTTPS://GitLab.COM/path"}}); got != "gitlab.com" {
+	if got := firstProviderHost(_provider.Definition{GitHosts: []string{"HTTPS://GitLab.COM/path"}}); got != "gitlab.com" {
 		t.Fatalf("firstProviderHost GitHosts = %q", got)
 	}
-	if got := firstProviderHost(providerpkg.Definition{WebURL: "https://github.example.test"}); got != "github.example.test" {
+	if got := firstProviderHost(_provider.Definition{WebURL: "https://github.example.test"}); got != "github.example.test" {
 		t.Fatalf("firstProviderHost WebURL = %q", got)
 	}
-	if got := firstProviderHost(providerpkg.Definition{APIURL: "https://api.example.test"}); got != "api.example.test" {
+	if got := firstProviderHost(_provider.Definition{APIURL: "https://api.example.test"}); got != "api.example.test" {
 		t.Fatalf("firstProviderHost APIURL = %q", got)
 	}
 
-	if def := providerOption(providerpkg.Definition{DisplayName: "Forge"}); def != "Forge" {
+	if def := providerOption(_provider.Definition{DisplayName: "Forge"}); def != "Forge" {
 		t.Fatalf("providerOption no host = %q", def)
 	}
-	if def := providerOption(providerpkg.Definition{DisplayName: "Forge", WebURL: "https://forge.example.test"}); def != "Forge (forge.example.test)" {
+	if def := providerOption(_provider.Definition{DisplayName: "Forge", WebURL: "https://forge.example.test"}); def != "Forge (forge.example.test)" {
 		t.Fatalf("providerOption host = %q", def)
 	}
 
-	p := &profile.Profile{Providers: map[string]profile.ProviderAccountConfig{string(providerpkg.GitLabID): {Username: "lab"}}}
-	if !profileUsesProvider(p, providerpkg.GitLabID) || profileUsesProvider(p, providerpkg.GitHubID) {
+	p := &_profile.Profile{Providers: map[string]_profile.ProviderAccountConfig{string(_provider.GitLabID): {Username: "lab"}}}
+	if !profileUsesProvider(p, _provider.GitLabID) || profileUsesProvider(p, _provider.GitHubID) {
 		t.Fatal("profileUsesProvider returned unexpected value")
 	}
-	if got := sshKeyProfileName("work", &profile.Profile{}); got != "work" {
+	if got := sshKeyProfileName("work", &_profile.Profile{}); got != "work" {
 		t.Fatalf("sshKeyProfileName no provider = %q", got)
 	}
 	if got := sshKeyProfileName("work", p); got != "work_gitlab" {
@@ -228,36 +228,36 @@ func TestProviderHelperBranches(t *testing.T) {
 		}
 	}
 
-	if got := providerManualKeyURL(providerpkg.Definition{ID: providerpkg.GitHubID, WebURL: "https://github.example.test/"}, "ssh"); got != "https://github.example.test/settings/keys" {
+	if got := providerManualKeyURL(_provider.Definition{ID: _provider.GitHubID, WebURL: "https://github.example.test/"}, "ssh"); got != "https://github.example.test/settings/keys" {
 		t.Fatalf("GitHub manual URL = %q", got)
 	}
-	if got := providerManualKeyURL(providerpkg.Definition{ID: providerpkg.GitLabID, WebURL: "https://gitlab.example.test"}, "ssh"); got != "https://gitlab.example.test/-/user_settings/ssh_keys" {
+	if got := providerManualKeyURL(_provider.Definition{ID: _provider.GitLabID, WebURL: "https://gitlab.example.test"}, "ssh"); got != "https://gitlab.example.test/-/user_settings/ssh_keys" {
 		t.Fatalf("GitLab SSH manual URL = %q", got)
 	}
-	if got := providerManualKeyURL(providerpkg.Definition{ID: providerpkg.GitLabID, WebURL: "https://gitlab.example.test"}, "gpg"); got != "https://gitlab.example.test/-/user_settings/gpg_keys" {
+	if got := providerManualKeyURL(_provider.Definition{ID: _provider.GitLabID, WebURL: "https://gitlab.example.test"}, "gpg"); got != "https://gitlab.example.test/-/user_settings/gpg_keys" {
 		t.Fatalf("GitLab GPG manual URL = %q", got)
 	}
-	if got := providerManualKeyURL(providerpkg.Definition{ID: providerpkg.ProviderID("forge"), WebURL: "https://forge.example.test/"}, "ssh"); got != "https://forge.example.test" {
+	if got := providerManualKeyURL(_provider.Definition{ID: _provider.ProviderID("forge"), WebURL: "https://forge.example.test/"}, "ssh"); got != "https://forge.example.test" {
 		t.Fatalf("generic manual URL = %q", got)
 	}
 
 	ctr = nil
-	if defs := providerDefinitionsWithCapability(providerpkg.CapabilityPATAuth); defs != nil {
+	if defs := providerDefinitionsWithCapability(_provider.CapabilityPATAuth); defs != nil {
 		t.Fatalf("providerDefinitionsWithCapability(nil ctr) = %+v", defs)
 	}
-	if _, ok := profileProviderDefinition(p, providerpkg.CapabilityPATAuth); ok {
+	if _, ok := profileProviderDefinition(p, _provider.CapabilityPATAuth); ok {
 		t.Fatal("profileProviderDefinition should fail without container")
 	}
 
 	ctr = newRepairTestContainer(t)
-	defs := providerDefinitionsWithCapability(providerpkg.CapabilityPATAuth)
+	defs := providerDefinitionsWithCapability(_provider.CapabilityPATAuth)
 	if len(defs) < 2 {
 		t.Fatalf("providerDefinitionsWithCapability = %+v", defs)
 	}
-	if def, ok := profileProviderDefinition(p, providerpkg.CapabilityCredentialHelper); !ok || def.ID != providerpkg.GitLabID {
+	if def, ok := profileProviderDefinition(p, _provider.CapabilityCredentialHelper); !ok || def.ID != _provider.GitLabID {
 		t.Fatalf("profileProviderDefinition = %+v, %v", def, ok)
 	}
-	if _, ok := profileProviderDefinition(p, providerpkg.CapabilityOAuthDeviceAuth); ok {
+	if _, ok := profileProviderDefinition(p, _provider.CapabilityOAuthDeviceAuth); ok {
 		t.Fatal("GitLab profile should not resolve OAuth capability")
 	}
 }
@@ -268,32 +268,32 @@ func TestProviderTransitionAndSSHMigrationBranches(t *testing.T) {
 	ctr = newRepairTestContainer(t)
 
 	p := repairTestProfile("work")
-	profile.SetProviderAccount(p, providerpkg.GitHubID, "octo", providerpkg.AuthMethodPAT)
+	_profile.SetProviderAccount(p, _provider.GitHubID, "octo", _provider.AuthMethodPAT)
 	oldState := cloneProfileProviderState(p)
-	def, _ := ctr.ProviderRegistry.Get(providerpkg.GitLabID)
+	def, _ := ctr.ProviderRegistry.Get(_provider.GitLabID)
 
-	setProfileProviderAccount(p, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
-	if !profileUsesProvider(p, providerpkg.GitLabID) {
+	setProfileProviderAccount(p, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
+	if !profileUsesProvider(p, _provider.GitLabID) {
 		t.Fatal("setProfileProviderAccount did not switch provider")
 	}
 	restoreProfileProviderState(p, oldState)
 
-	ok, err := applyProfileProviderTransitionWithOptions(context.Background(), "work", p, def, "lab", providerpkg.AuthMethodPAT, providerTransitionOptions{}, nil)
+	ok, err := applyProfileProviderTransitionWithOptions(context.Background(), "work", p, def, "lab", _provider.AuthMethodPAT, providerTransitionOptions{}, nil)
 	if err == nil || ok || !strings.Contains(err.Error(), "already configured") {
 		t.Fatalf("non-interactive transition = %v, %v", ok, err)
 	}
-	ok, err = applyProfileProviderTransitionWithOptions(context.Background(), "work", p, def, "lab", providerpkg.AuthMethodPAT, providerTransitionOptions{AutoConfirm: true}, func() error {
+	ok, err = applyProfileProviderTransitionWithOptions(context.Background(), "work", p, def, "lab", _provider.AuthMethodPAT, providerTransitionOptions{AutoConfirm: true}, func() error {
 		return os.ErrPermission
 	})
 	if err == nil || ok {
 		t.Fatalf("transition afterSet error = %v, %v", ok, err)
 	}
-	if !profileUsesProvider(p, providerpkg.GitHubID) {
+	if !profileUsesProvider(p, _provider.GitHubID) {
 		t.Fatal("provider state should be restored after transition error")
 	}
 
-	clearProfileProviderAccount(p, providerpkg.GitHubID)
-	if profileUsesProvider(p, providerpkg.GitHubID) {
+	clearProfileProviderAccount(p, _provider.GitHubID)
+	if profileUsesProvider(p, _provider.GitHubID) {
 		t.Fatal("clearProfileProviderAccount did not remove GitHub")
 	}
 	clearAllProfileProviderAccounts(p)
@@ -313,8 +313,8 @@ func TestProviderTransitionAndSSHMigrationBranches(t *testing.T) {
 		t.Fatalf("write public key: %v", err)
 	}
 	mp := repairTestProfile("migrate")
-	profile.SetProviderAccount(mp, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
-	mp.SSH = &profile.SSHConfig{KeyPath: legacyKey, KeyType: "ed25519"}
+	_profile.SetProviderAccount(mp, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
+	mp.SSH = &_profile.SSHConfig{KeyPath: legacyKey, KeyType: "ed25519"}
 	if err := ctr.ProfileManager.Update(mp); err != nil {
 		t.Fatalf("seed migrate profile: %v", err)
 	}
@@ -335,34 +335,34 @@ func TestSelectionRequirementAndTokenHelpers(t *testing.T) {
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
 	p := repairTestProfile("work")
-	profile.SetProviderAccount(p, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
-	def, _ := ctr.ProviderRegistry.Get(providerpkg.GitLabID)
+	_profile.SetProviderAccount(p, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
+	def, _ := ctr.ProviderRegistry.Get(_provider.GitLabID)
 
-	if selected, err := selectProfileProviderWithCapability("work", p, "", providerpkg.CapabilityPATAuth); err != nil || selected.ID != providerpkg.GitLabID {
+	if selected, err := selectProfileProviderWithCapability("work", p, "", _provider.CapabilityPATAuth); err != nil || selected.ID != _provider.GitLabID {
 		t.Fatalf("select default = %+v, %v", selected, err)
 	}
-	if _, err := selectProfileProviderWithCapability("work", p, "github", providerpkg.CapabilityPATAuth); err == nil || !strings.Contains(err.Error(), "not github") {
+	if _, err := selectProfileProviderWithCapability("work", p, "github", _provider.CapabilityPATAuth); err == nil || !strings.Contains(err.Error(), "not github") {
 		t.Fatalf("select mismatch error = %v", err)
 	}
 	if err := requireProfileProvider("work", p, def); err != nil {
 		t.Fatalf("requireProfileProvider: %v", err)
 	}
-	if err := requireProfileProvider("work", &profile.Profile{}, def); err == nil || !strings.Contains(err.Error(), "not configured") {
+	if err := requireProfileProvider("work", &_profile.Profile{}, def); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Fatalf("require missing provider error = %v", err)
 	}
 	mixed := repairTestProfile("mixed")
-	mixed.Providers = map[string]profile.ProviderAccountConfig{string(providerpkg.GitHubID): {}, string(providerpkg.GitLabID): {}}
+	mixed.Providers = map[string]_profile.ProviderAccountConfig{string(_provider.GitHubID): {}, string(_provider.GitLabID): {}}
 	if err := requireProfileProvider("mixed", mixed, def); err == nil || !strings.Contains(err.Error(), "multiple providers") {
 		t.Fatalf("require multiple provider error = %v", err)
 	}
 
-	if err := saveProviderToken("work", def, p, providerpkg.TokenSet{AccessToken: "tok", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	if err := saveProviderToken("work", def, p, _provider.TokenSet{AccessToken: "tok", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("saveProviderToken: %v", err)
 	}
 	if loaded, err := loadProviderToken("work", def, p); err != nil || loaded.AccessToken != "tok" {
 		t.Fatalf("loadProviderToken = %+v, %v", loaded, err)
 	}
-	if defs := authenticatedProvidersForProfile("work", p, providerpkg.CapabilityPATAuth); len(defs) != 1 || defs[0].ID != providerpkg.GitLabID {
+	if defs := authenticatedProvidersForProfile("work", p, _provider.CapabilityPATAuth); len(defs) != 1 || defs[0].ID != _provider.GitLabID {
 		t.Fatalf("authenticatedProvidersForProfile = %+v", defs)
 	}
 	if err := deleteProviderToken("work", def, p); err != nil {
@@ -385,12 +385,12 @@ func TestCredentialHelperPureHelpers(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.ProviderID("docs"), DisplayName: "Docs", WebURL: "https://docs.example.test", GitHosts: []string{"docs.example.test"}})
-	ctr.ProviderRegistry.Register(providerpkg.Definition{
-		ID:           providerpkg.ProviderID("forge"),
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.ProviderID("docs"), DisplayName: "Docs", WebURL: "https://docs.example.test", GitHosts: []string{"docs.example.test"}})
+	ctr.ProviderRegistry.Register(_provider.Definition{
+		ID:           _provider.ProviderID("forge"),
 		DisplayName:  "Forge",
 		GitHosts:     []string{"forge.example.test", "https://alt-forge.example.test/"},
-		Capabilities: providerpkg.CapabilitySet{providerpkg.CapabilityCredentialHelper: true},
+		Capabilities: _provider.CapabilitySet{_provider.CapabilityCredentialHelper: true},
 	})
 	servers := credentialHelperServers()
 	seen := make(map[string]bool, len(servers))
@@ -432,13 +432,13 @@ func TestCredentialHelperGetOutputsActiveProviderCredentials(t *testing.T) {
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
 	p := repairTestProfile("work")
-	profile.SetProviderAccount(p, providerpkg.GitHubID, "octo", providerpkg.AuthMethodPAT)
+	_profile.SetProviderAccount(p, _provider.GitHubID, "octo", _provider.AuthMethodPAT)
 	if err := ctr.ProfileManager.Create(p); err != nil {
 		t.Fatalf("create profile: %v", err)
 	}
 	ctr.Config.DefaultProfile = "work"
-	def, _ := ctr.ProviderRegistry.Get(providerpkg.GitHubID)
-	if err := saveProviderToken("work", def, p, providerpkg.TokenSet{AccessToken: "gh-token", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	def, _ := ctr.ProviderRegistry.Get(_provider.GitHubID)
+	if err := saveProviderToken("work", def, p, _provider.TokenSet{AccessToken: "gh-token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
 	t.Setenv("GIT_DIR", "/tmp/should-be-cleared")
@@ -479,18 +479,18 @@ func TestConnectRunPaths(t *testing.T) {
 		w.Write([]byte(`{"username":"lab","name":"Lab User"}`))
 	}))
 	t.Cleanup(server.Close)
-	log := logger.New(logger.LevelError, io.Discard)
-	ctr.GitLabClient = gitlab.NewClient(config.ProviderConfig{APIURL: server.URL}, log)
-	ctr.ProviderClient = providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, UploadKeys: true, Capabilities: providerpkg.GitLabCapabilities()})
+	log := _logger.New(_logger.LevelError, io.Discard)
+	ctr.GitLabClient = _gitlab.NewClient(_config.ProviderConfig{APIURL: server.URL}, log)
+	ctr.ProviderClient = _providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, UploadKeys: true, Capabilities: _provider.GitLabCapabilities()})
 
 	if _, err := resolveConnectProvider("work", p, "missing"); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Fatalf("resolve missing provider error = %v", err)
 	}
-	if got := providerPATURL(providerpkg.Definition{ID: providerpkg.GitLabID, WebURL: "https://gitlab.example.test/"}); got != "https://gitlab.example.test/-/user_settings/personal_access_tokens" {
+	if got := providerPATURL(_provider.Definition{ID: _provider.GitLabID, WebURL: "https://gitlab.example.test/"}); got != "https://gitlab.example.test/-/user_settings/personal_access_tokens" {
 		t.Fatalf("providerPATURL GitLab = %q", got)
 	}
-	if got := providerPATURL(providerpkg.Definition{ID: providerpkg.ProviderID("forge"), WebURL: "https://forge.example.test/"}); got != "https://forge.example.test" {
+	if got := providerPATURL(_provider.Definition{ID: _provider.ProviderID("forge"), WebURL: "https://forge.example.test/"}); got != "https://forge.example.test" {
 		t.Fatalf("providerPATURL generic = %q", got)
 	}
 
@@ -502,10 +502,10 @@ func TestConnectRunPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get updated profile: %v", err)
 	}
-	if !profileUsesProvider(updated, providerpkg.GitLabID) {
+	if !profileUsesProvider(updated, _provider.GitLabID) {
 		t.Fatalf("profile provider not updated: %+v", updated.Providers)
 	}
-	if token, err := loadProviderToken("work", func() providerpkg.Definition { d, _ := ctr.ProviderRegistry.Get(providerpkg.GitLabID); return d }(), updated); err != nil || token.AccessToken != "gl-token" {
+	if token, err := loadProviderToken("work", func() _provider.Definition { d, _ := ctr.ProviderRegistry.Get(_provider.GitLabID); return d }(), updated); err != nil || token.AccessToken != "gl-token" {
 		t.Fatalf("stored token = %+v, %v", token, err)
 	}
 
@@ -519,13 +519,13 @@ func TestConnectRunPaths(t *testing.T) {
 }
 
 func TestStatusVerifierEdgeBranches(t *testing.T) {
-	if err := quickVerifyProviderToken(providerpkg.Definition{ID: providerpkg.BitbucketID}, providerpkg.TokenSet{}); err != nil {
+	if err := quickVerifyProviderToken(_provider.Definition{ID: _provider.BitbucketID}, _provider.TokenSet{}); err != nil {
 		t.Fatalf("unknown provider verifier = %v", err)
 	}
 	if err := quickVerifyToken("tok", "http://bad host"); err == nil {
 		t.Fatal("expected GitHub request error")
 	}
-	if err := quickVerifyGitLabToken(providerpkg.TokenSet{AccessToken: "tok"}, "http://bad host"); err == nil {
+	if err := quickVerifyGitLabToken(_provider.TokenSet{AccessToken: "tok"}, "http://bad host"); err == nil {
 		t.Fatal("expected GitLab request error")
 	}
 }
@@ -560,15 +560,15 @@ func TestProviderSpecificCommandRunPaths(t *testing.T) {
 	}))
 	t.Cleanup(gitlabServer.Close)
 
-	log := logger.New(logger.LevelError, io.Discard)
+	log := _logger.New(_logger.LevelError, io.Discard)
 	ctr.Config.GitHub.APIURL = githubServer.URL
-	ctr.GitHubClient = github.NewClient(ctr.Config, log, ctr.TokenStore)
-	ctr.GitLabClient = gitlab.NewClient(config.ProviderConfig{APIURL: gitlabServer.URL}, log)
-	ctr.ProviderClient = providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", Type: "github", APIURL: githubServer.URL, WebURL: githubServer.URL, GitHosts: []string{"github.test"}, Capabilities: providerpkg.GitHubCapabilities()})
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: gitlabServer.URL, WebURL: gitlabServer.URL, GitHosts: []string{"gitlab.test"}, Capabilities: providerpkg.GitLabCapabilities()})
+	ctr.GitHubClient = _github.NewClient(ctr.Config, log, ctr.TokenStore)
+	ctr.GitLabClient = _gitlab.NewClient(_config.ProviderConfig{APIURL: gitlabServer.URL}, log)
+	ctr.ProviderClient = _providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", Type: "github", APIURL: githubServer.URL, WebURL: githubServer.URL, GitHosts: []string{"github.test"}, Capabilities: _provider.GitHubCapabilities()})
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: gitlabServer.URL, WebURL: gitlabServer.URL, GitHosts: []string{"gitlab.test"}, Capabilities: _provider.GitLabCapabilities()})
 
-	for _, p := range []*profile.Profile{repairTestProfile("ghwork"), repairTestProfile("glwork")} {
+	for _, p := range []*_profile.Profile{repairTestProfile("ghwork"), repairTestProfile("glwork")} {
 		if err := ctr.ProfileManager.Create(p); err != nil {
 			t.Fatalf("create profile %s: %v", p.Name, err)
 		}
@@ -627,18 +627,18 @@ func TestSSHAndGPGCommandRunPaths(t *testing.T) {
 		}
 	}))
 	t.Cleanup(server.Close)
-	log := logger.New(logger.LevelError, io.Discard)
-	ctr.GitLabClient = gitlab.NewClient(config.ProviderConfig{APIURL: server.URL}, log)
-	ctr.ProviderClient = providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
-	ctr.ProviderRegistry.Register(providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, SSHHost: "gitlab.test", UploadKeys: false, Capabilities: providerpkg.GitLabCapabilities()})
+	log := _logger.New(_logger.LevelError, io.Discard)
+	ctr.GitLabClient = _gitlab.NewClient(_config.ProviderConfig{APIURL: server.URL}, log)
+	ctr.ProviderClient = _providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
+	ctr.ProviderRegistry.Register(_provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, SSHHost: "gitlab.test", UploadKeys: false, Capabilities: _provider.GitLabCapabilities()})
 
 	sshProfile := repairTestProfile("sshwork")
-	profile.SetProviderAccount(sshProfile, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
+	_profile.SetProviderAccount(sshProfile, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
 	if err := ctr.ProfileManager.Create(sshProfile); err != nil {
 		t.Fatalf("create ssh profile: %v", err)
 	}
-	def, _ := ctr.ProviderRegistry.Get(providerpkg.GitLabID)
-	if err := saveProviderToken("sshwork", def, sshProfile, providerpkg.TokenSet{AccessToken: "gl-token", AuthMethod: providerpkg.AuthMethodPAT}); err != nil {
+	def, _ := ctr.ProviderRegistry.Get(_provider.GitLabID)
+	if err := saveProviderToken("sshwork", def, sshProfile, _provider.TokenSet{AccessToken: "gl-token", AuthMethod: _provider.AuthMethodPAT}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
 
@@ -726,10 +726,10 @@ func TestTemplateAndProfileHelperBranches(t *testing.T) {
 		t.Fatalf("extracted template = %+v", extracted)
 	}
 
-	applyTemplate := &templatepkg.Template{
+	applyTemplate := &_template.Template{
 		Name:        "apply-all",
 		Description: "All settings",
-		Git: templatepkg.GitConfigTemplate{
+		Git: _template.GitConfigTemplate{
 			Core:    map[string]interface{}{"editor": "nano", "autocrlf": "false", "eol": "crlf", "filemode": false, "ignorecase": true},
 			Commit:  map[string]interface{}{"gpgsign": false, "template": "new.txt", "verbose": false},
 			Pull:    map[string]interface{}{"rebase": "merges", "ff": "false"},
@@ -752,15 +752,15 @@ func TestTemplateAndProfileHelperBranches(t *testing.T) {
 	}
 
 	providerProfile := repairTestProfile("provider")
-	profile.SetProviderAccount(providerProfile, providerpkg.GitLabID, "lab", providerpkg.AuthMethodPAT)
+	_profile.SetProviderAccount(providerProfile, _provider.GitLabID, "lab", _provider.AuthMethodPAT)
 	captureStdout(t, func() {
 		diffField("Email", "a@example.test", "b@example.test", "a", "b")
 		diffField("Same", "x", "x", "a", "b")
 		printProfileProviderAccounts(providerProfile)
 		printProfileProviderAccountSummary(providerProfile)
-		printProfileProviderAccounts(&profile.Profile{Name: "none"})
-		printProfileProviderAccountSummary(&profile.Profile{Name: "none"})
-		mixed := &profile.Profile{Name: "mixed", Providers: map[string]profile.ProviderAccountConfig{string(providerpkg.GitHubID): {}, string(providerpkg.GitLabID): {}}}
+		printProfileProviderAccounts(&_profile.Profile{Name: "none"})
+		printProfileProviderAccountSummary(&_profile.Profile{Name: "none"})
+		mixed := &_profile.Profile{Name: "mixed", Providers: map[string]_profile.ProviderAccountConfig{string(_provider.GitHubID): {}, string(_provider.GitLabID): {}}}
 		printProfileProviderAccounts(mixed)
 		printProfileProviderAccountSummary(mixed)
 	})
@@ -801,7 +801,7 @@ func TestInteractiveProfileAndTemplateFlows(t *testing.T) {
 	if err := promptProviderAccountUsernames(providerProfile); err != nil {
 		t.Fatalf("promptProviderAccountUsernames provider: %v", err)
 	}
-	if !profileUsesProvider(providerProfile, providerpkg.GitHubID) {
+	if !profileUsesProvider(providerProfile, _provider.GitHubID) {
 		t.Fatalf("provider prompt did not set GitHub: %+v", providerProfile.Providers)
 	}
 	setUIPromptInput(t, "1\ny\n")
@@ -851,10 +851,10 @@ func TestSetupSkipFlowAndProviderAuthenticationBranches(t *testing.T) {
 		w.Write([]byte(`{"username":"setup-lab"}`))
 	}))
 	t.Cleanup(server.Close)
-	log := logger.New(logger.LevelError, io.Discard)
-	ctr.GitLabClient = gitlab.NewClient(config.ProviderConfig{APIURL: server.URL}, log)
-	ctr.ProviderClient = providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
-	gitlabDef := providerpkg.Definition{ID: providerpkg.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, Capabilities: providerpkg.GitLabCapabilities()}
+	log := _logger.New(_logger.LevelError, io.Discard)
+	ctr.GitLabClient = _gitlab.NewClient(_config.ProviderConfig{APIURL: server.URL}, log)
+	ctr.ProviderClient = _providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
+	gitlabDef := _provider.Definition{ID: _provider.GitLabID, DisplayName: "GitLab", Type: "gitlab", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"gitlab.test"}, Capabilities: _provider.GitLabCapabilities()}
 	ctr.ProviderRegistry.Register(gitlabDef)
 
 	setUIPromptInput(t, "\n")
@@ -870,7 +870,7 @@ func TestSetupSkipFlowAndProviderAuthenticationBranches(t *testing.T) {
 		}
 	})
 	updated, _ := ctr.ProfileManager.Get("setupwork")
-	if !profileUsesProvider(updated, providerpkg.GitLabID) {
+	if !profileUsesProvider(updated, _provider.GitLabID) {
 		t.Fatalf("setup GitLab auth did not set provider: %+v", updated.Providers)
 	}
 
@@ -990,11 +990,11 @@ func TestGitHubOAuthGHAndSetupAuthBranches(t *testing.T) {
 		w.Write([]byte(`{"login":"setup-octo"}`))
 	}))
 	t.Cleanup(server.Close)
-	log := logger.New(logger.LevelError, io.Discard)
+	log := _logger.New(_logger.LevelError, io.Discard)
 	ctr.Config.GitHub.APIURL = server.URL
-	ctr.GitHubClient = github.NewClient(ctr.Config, log, ctr.TokenStore)
-	ctr.ProviderClient = providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
-	githubDef := providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", Type: "github", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"github.test"}, Capabilities: providerpkg.GitHubCapabilities()}
+	ctr.GitHubClient = _github.NewClient(ctr.Config, log, ctr.TokenStore)
+	ctr.ProviderClient = _providerclient.NewRouter(ctr.GitHubClient, ctr.GitLabClient)
+	githubDef := _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", Type: "github", APIURL: server.URL, WebURL: server.URL, GitHosts: []string{"github.test"}, Capabilities: _provider.GitHubCapabilities()}
 	ctr.ProviderRegistry.Register(githubDef)
 
 	profileConfig := repairTestProfile("oauthwork")
@@ -1048,7 +1048,7 @@ func TestGitHubOAuthGHAndSetupAuthBranches(t *testing.T) {
 		}
 	})
 	updated, _ := ctr.ProfileManager.Get("oauthwork")
-	if !profileUsesProvider(updated, providerpkg.GitHubID) {
+	if !profileUsesProvider(updated, _provider.GitHubID) {
 		t.Fatalf("setup GitHub auth did not set provider: %+v", updated.Providers)
 	}
 }
@@ -1066,7 +1066,7 @@ func TestAdditionalCommandBranches(t *testing.T) {
 	}
 	captureStdout(t, func() {
 		validateAndPrint(source)
-		validateAndPrint(&profile.Profile{Name: "invalid"})
+		validateAndPrint(&_profile.Profile{Name: "invalid"})
 	})
 
 	captureStdout(t, func() {

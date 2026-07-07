@@ -8,18 +8,18 @@ import (
 	"os"
 	"testing"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 )
 
 // mockDeps replaces configLoad and configEnsureDirs with no-op stubs that
 // return the given cfg. Returns a restore function to call in defer.
-func mockDeps(t *testing.T, cfg *config.Config) func() {
+func mockDeps(t *testing.T, cfg *_config.Config) func() {
 	t.Helper()
 	origLoad := configLoad
 	origEnsure := configEnsureDirs
-	configLoad = func() (*config.Config, error) { return cfg, nil }
-	configEnsureDirs = func(*config.Config) error { return nil }
+	configLoad = func() (*_config.Config, error) { return cfg, nil }
+	configEnsureDirs = func(*_config.Config) error { return nil }
 	return func() {
 		configLoad = origLoad
 		configEnsureDirs = origEnsure
@@ -27,7 +27,7 @@ func mockDeps(t *testing.T, cfg *config.Config) func() {
 }
 
 func TestMain_CallsOsExit(t *testing.T) {
-	restore := mockDeps(t, config.DefaultConfig())
+	restore := mockDeps(t, _config.DefaultConfig())
 	defer restore()
 
 	orig := osExit
@@ -47,7 +47,7 @@ func TestMain_CallsOsExit(t *testing.T) {
 }
 
 func TestRun_Success(t *testing.T) {
-	restore := mockDeps(t, config.DefaultConfig())
+	restore := mockDeps(t, _config.DefaultConfig())
 	defer restore()
 
 	if code := run([]string{"version"}); code != 0 {
@@ -56,7 +56,7 @@ func TestRun_Success(t *testing.T) {
 }
 
 func TestRun_UIFlagsFromConfig(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.UI.Color = false  // triggers ui.DisableColor()
 	cfg.UI.Verbose = true // triggers log.SetVerbose(true)
 	cfg.UI.Quiet = true   // triggers log.SetQuiet(true)
@@ -69,7 +69,7 @@ func TestRun_UIFlagsFromConfig(t *testing.T) {
 }
 
 func TestRun_PersistentPreRun(t *testing.T) {
-	restore := mockDeps(t, config.DefaultConfig())
+	restore := mockDeps(t, _config.DefaultConfig())
 	defer restore()
 
 	// These flags exercise the PersistentPreRun closure
@@ -81,7 +81,7 @@ func TestRun_PersistentPreRun(t *testing.T) {
 
 func TestRun_ConfigLoadError(t *testing.T) {
 	orig := configLoad
-	configLoad = func() (*config.Config, error) { return nil, errors.New("load error") }
+	configLoad = func() (*_config.Config, error) { return nil, errors.New("load error") }
 	defer func() { configLoad = orig }()
 
 	if code := run(nil); code != 1 {
@@ -91,11 +91,11 @@ func TestRun_ConfigLoadError(t *testing.T) {
 
 func TestRun_EnsureDirsError(t *testing.T) {
 	origLoad := configLoad
-	configLoad = func() (*config.Config, error) { return config.DefaultConfig(), nil }
+	configLoad = func() (*_config.Config, error) { return _config.DefaultConfig(), nil }
 	defer func() { configLoad = origLoad }()
 
 	origEnsure := configEnsureDirs
-	configEnsureDirs = func(*config.Config) error { return errors.New("dirs error") }
+	configEnsureDirs = func(*_config.Config) error { return errors.New("dirs error") }
 	defer func() { configEnsureDirs = origEnsure }()
 
 	if code := run(nil); code != 1 {
@@ -104,7 +104,7 @@ func TestRun_EnsureDirsError(t *testing.T) {
 }
 
 func TestRun_ExecuteError(t *testing.T) {
-	restore := mockDeps(t, config.DefaultConfig())
+	restore := mockDeps(t, _config.DefaultConfig())
 	defer restore()
 
 	// An unknown flag causes cobra to return an error (exit code 1)
@@ -119,9 +119,9 @@ func TestMasterPasswordPrompt_DefaultIsCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	origIn := ui.PromptIn
-	ui.PromptIn = r
-	defer func() { ui.PromptIn = origIn; r.Close() }()
+	origIn := _ui.PromptIn
+	_ui.PromptIn = r
+	defer func() { _ui.PromptIn = origIn; r.Close() }()
 
 	fmt.Fprintln(w, "testpassword")
 	w.Close()

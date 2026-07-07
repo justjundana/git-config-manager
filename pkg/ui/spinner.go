@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/briandowns/spinner"
+	spinner "github.com/briandowns/spinner"
 )
 
 // Spinner wraps the spinner library for consistent UI.

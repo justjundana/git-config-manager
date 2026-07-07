@@ -7,28 +7,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/internal/providerclient"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_providerclient "github.com/justjundana/git-config-manager/internal/providerclient"
 )
 
 type fakeTokenStore struct {
-	tokens map[providerpkg.TokenKey]providerpkg.TokenSet
+	tokens map[_provider.TokenKey]_provider.TokenSet
 }
 
-func (f fakeTokenStore) LoadTokenSet(key providerpkg.TokenKey) (providerpkg.TokenSet, error) {
+func (f fakeTokenStore) LoadTokenSet(key _provider.TokenKey) (_provider.TokenSet, error) {
 	if token, ok := f.tokens[key]; ok {
 		return token, nil
 	}
-	return providerpkg.TokenSet{}, fmt.Errorf("not found")
+	return _provider.TokenSet{}, fmt.Errorf("not found")
 }
 
-func (f fakeTokenStore) SaveTokenSet(key providerpkg.TokenKey, token providerpkg.TokenSet) error {
+func (f fakeTokenStore) SaveTokenSet(key _provider.TokenKey, token _provider.TokenSet) error {
 	f.tokens[key] = token
 	return nil
 }
 
-func (f fakeTokenStore) DeleteTokenSet(key providerpkg.TokenKey) error {
+func (f fakeTokenStore) DeleteTokenSet(key _provider.TokenKey) error {
 	delete(f.tokens, key)
 	return nil
 }
@@ -37,25 +37,25 @@ type failingTokenStore struct {
 	err error
 }
 
-func (f failingTokenStore) LoadTokenSet(providerpkg.TokenKey) (providerpkg.TokenSet, error) {
-	return providerpkg.TokenSet{}, f.err
+func (f failingTokenStore) LoadTokenSet(_provider.TokenKey) (_provider.TokenSet, error) {
+	return _provider.TokenSet{}, f.err
 }
 
-func (f failingTokenStore) SaveTokenSet(providerpkg.TokenKey, providerpkg.TokenSet) error {
+func (f failingTokenStore) SaveTokenSet(_provider.TokenKey, _provider.TokenSet) error {
 	return nil
 }
 
-func (f failingTokenStore) DeleteTokenSet(providerpkg.TokenKey) error {
+func (f failingTokenStore) DeleteTokenSet(_provider.TokenKey) error {
 	return nil
 }
 
-type fakeVerifier map[string]providerclient.AuthenticatedUser
+type fakeVerifier map[string]_providerclient.AuthenticatedUser
 
-func (f fakeVerifier) VerifyPAT(_ context.Context, _ providerpkg.Definition, token string) (providerclient.AuthenticatedUser, error) {
+func (f fakeVerifier) VerifyPAT(_ context.Context, _ _provider.Definition, token string) (_providerclient.AuthenticatedUser, error) {
 	if user, ok := f[token]; ok {
 		return user, nil
 	}
-	return providerclient.AuthenticatedUser{}, fmt.Errorf("revoked")
+	return _providerclient.AuthenticatedUser{}, fmt.Errorf("revoked")
 }
 
 type fakeExternalInspector struct {
@@ -63,20 +63,20 @@ type fakeExternalInspector struct {
 	err        error
 }
 
-func (f fakeExternalInspector) InspectGitCredential(context.Context, providerpkg.Definition, string) (GitCredentialInspection, error) {
+func (f fakeExternalInspector) InspectGitCredential(context.Context, _provider.Definition, string) (GitCredentialInspection, error) {
 	return f.inspection, f.err
 }
 
-func (f fakeExternalInspector) RejectGitCredential(context.Context, providerpkg.Definition, string) error {
+func (f fakeExternalInspector) RejectGitCredential(context.Context, _provider.Definition, string) error {
 	return nil
 }
 
-func testDefinition() providerpkg.Definition {
-	return providerpkg.Definition{ID: providerpkg.GitHubID, DisplayName: "GitHub", APIURL: "https://api.github.com", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
+func testDefinition() _provider.Definition {
+	return _provider.Definition{ID: _provider.GitHubID, DisplayName: "GitHub", APIURL: "https://api.github.com", WebURL: "https://github.com", GitHosts: []string{"github.com"}}
 }
 
-func testProfile() *profile.Profile {
-	return &profile.Profile{Name: "work", Providers: map[string]profile.ProviderAccountConfig{"github": {Username: "octo"}}}
+func testProfile() *_profile.Profile {
+	return &_profile.Profile{Name: "work", Providers: map[string]_profile.ProviderAccountConfig{"github": {Username: "octo"}}}
 }
 
 func TestResolveGCMTokenVerified(t *testing.T) {
@@ -84,7 +84,7 @@ func TestResolveGCMTokenVerified(t *testing.T) {
 	p := testProfile()
 	key := TokenKey("work", def, p)
 	mgr := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "gcm-token", AuthMethod: providerpkg.AuthMethodPAT}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "gcm-token", AuthMethod: _provider.AuthMethodPAT}}},
 		Verifier:   fakeVerifier{"gcm-token": {Username: "octo"}},
 		Now:        func() time.Time { return time.Unix(100, 0) },
 	}
@@ -105,7 +105,7 @@ func TestResolveExternalOnly(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
 	mgr := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}},
 		Verifier:   fakeVerifier{"external-token": {Username: "octo"}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{Credential: CredentialStatus{
 			Type: "https", Source: SourceOSXKeychain, Ownership: OwnershipExternal, State: StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
@@ -127,7 +127,7 @@ func TestResolveExternalOnly(t *testing.T) {
 func TestResolveMissingGCMTokenHasNoError(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
-	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}}}
+	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}}}
 
 	status, err := manager.Resolve(context.Background(), ResolveRequest{ProfileName: "work", Profile: p, Provider: def})
 	if err != nil {
@@ -154,7 +154,7 @@ func TestResolvePinnedGitCredentialUsernameWithoutHTTPSCredential(t *testing.T) 
 	def := testDefinition()
 	p := testProfile()
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{
 			Credential:         CredentialStatus{Type: "https", Source: SourceUnknown, Ownership: OwnershipUnknown, State: StateUnauthenticated, Host: "github.com", Username: "octo"},
 			ConfiguredUsername: "octo",
@@ -176,7 +176,7 @@ func TestResolveConflictingCredentials(t *testing.T) {
 	p := testProfile()
 	key := TokenKey("work", def, p)
 	mgr := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "gcm-token"}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "gcm-token"}}},
 		Verifier: fakeVerifier{
 			"gcm-token":      {Username: "octo"},
 			"external-token": {Username: "other"},
@@ -201,10 +201,10 @@ func TestResolveConflictingCredentials(t *testing.T) {
 func TestResolveGCMHelperCredentialForDifferentActiveProfileDoesNotConflict(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
-	p.Providers["github"] = profile.ProviderAccountConfig{Username: "justjundana"}
+	p.Providers["github"] = _profile.ProviderAccountConfig{Username: "justjundana"}
 	key := TokenKey("work", def, p)
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "profile-token"}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "profile-token"}}},
 		Verifier:   fakeVerifier{"profile-token": {Username: "justjundana"}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{Credential: CredentialStatus{
 			Type: "https", Source: SourceGCMStore, Ownership: OwnershipGCM, State: StateAuthenticatedGCM, Present: true, Secret: "active-profile-token", Username: "justjundana",
@@ -231,7 +231,7 @@ func TestResolveGCMHelperCredentialMirrorsProfileTokenVerification(t *testing.T)
 	p := testProfile()
 	key := TokenKey("work", def, p)
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "profile-token", AuthMethod: providerpkg.AuthMethodPAT}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "profile-token", AuthMethod: _provider.AuthMethodPAT}}},
 		Verifier:   fakeVerifier{"profile-token": {Username: "octo"}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{Credential: CredentialStatus{
 			Type: "https", Source: SourceGCMStore, Ownership: OwnershipGCM, State: StateAuthenticatedGCM, Present: true, Secret: "profile-token", Username: "octo",
@@ -242,7 +242,7 @@ func TestResolveGCMHelperCredentialMirrorsProfileTokenVerification(t *testing.T)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if !status.ExternalCredential.Verified || status.ExternalCredential.AuthMethod != providerpkg.AuthMethodPAT {
+	if !status.ExternalCredential.Verified || status.ExternalCredential.AuthMethod != _provider.AuthMethodPAT {
 		t.Fatalf("expected helper credential to mirror GCM verification: %+v", status.ExternalCredential)
 	}
 }
@@ -251,7 +251,7 @@ func TestResolveGCMHelperCredentialWithoutProfileTokenIsNotExternal(t *testing.T
 	def := testDefinition()
 	p := testProfile()
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}},
 		Verifier:   fakeVerifier{"active-profile-token": {Username: "justjundana"}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{Credential: CredentialStatus{
 			Type: "https", Source: SourceGCMStore, Ownership: OwnershipGCM, State: StateAuthenticatedGCM, Present: true, Secret: "active-profile-token", Username: "justjundana",
@@ -283,10 +283,10 @@ func TestResolveExpiredTokenFallsBackToSSHPartial(t *testing.T) {
 		t.Fatalf("write key: %v", err)
 	}
 	p := testProfile()
-	p.SSH = &profile.SSHConfig{KeyPath: keyPath}
+	p.SSH = &_profile.SSHConfig{KeyPath: keyPath}
 	key := TokenKey("work", def, p)
 	mgr := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "expired", ExpiresAt: time.Unix(90, 0)}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "expired", ExpiresAt: time.Unix(90, 0)}}},
 		Now:        func() time.Time { return time.Unix(100, 0) },
 	}
 
@@ -302,15 +302,15 @@ func TestResolveExpiredTokenFallsBackToSSHPartial(t *testing.T) {
 func TestTokenKeyUsesPrimaryHostAndAccount(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
-	p.Providers["github"] = profile.ProviderAccountConfig{Username: "octo", Account: "enterprise"}
+	p.Providers["github"] = _profile.ProviderAccountConfig{Username: "octo", Account: "enterprise"}
 	key := TokenKey("work", def, p)
-	if key.Profile != "work" || key.Provider != providerpkg.GitHubID || key.Host != "github.com" || key.Account != "enterprise" {
+	if key.Profile != "work" || key.Provider != _provider.GitHubID || key.Host != "github.com" || key.Account != "enterprise" {
 		t.Fatalf("unexpected key: %+v", key)
 	}
 }
 
 func TestResolveErrorBranches(t *testing.T) {
-	manager := NewManager(fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}}, fakeVerifier{})
+	manager := NewManager(fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}}, fakeVerifier{})
 	if manager.TokenStore == nil || manager.Verifier == nil || manager.ExternalInspector == nil || manager.Now == nil {
 		t.Fatalf("NewManager did not initialize dependencies: %+v", manager)
 	}
@@ -320,7 +320,7 @@ func TestResolveErrorBranches(t *testing.T) {
 	if _, err := manager.Resolve(context.Background(), ResolveRequest{ProfileName: "work"}); err == nil {
 		t.Fatal("expected empty provider error")
 	}
-	status, err := manager.Resolve(context.Background(), ResolveRequest{Profile: &profile.Profile{Name: "work"}, Provider: testDefinition(), Timeout: time.Millisecond})
+	status, err := manager.Resolve(context.Background(), ResolveRequest{Profile: &_profile.Profile{Name: "work"}, Provider: testDefinition(), Timeout: time.Millisecond})
 	if err != nil {
 		t.Fatalf("Resolve with profile-derived name: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestResolveAggregationBranches(t *testing.T) {
 	key := TokenKey("work", def, p)
 	tests := []struct {
 		name        string
-		gcmToken    providerpkg.TokenSet
+		gcmToken    _provider.TokenSet
 		external    CredentialStatus
 		verifier    fakeVerifier
 		wantState   State
@@ -378,7 +378,7 @@ func TestResolveAggregationBranches(t *testing.T) {
 	}{
 		{
 			name:      "same secret remains gcm owned",
-			gcmToken:  providerpkg.TokenSet{AccessToken: "same-token"},
+			gcmToken:  _provider.TokenSet{AccessToken: "same-token"},
 			external:  CredentialStatus{Type: "https", Source: SourceOSXKeychain, Ownership: OwnershipExternal, State: StateAuthenticatedExternal, Present: true, Secret: "same-token", Username: "octo"},
 			verifier:  fakeVerifier{"same-token": {Username: "octo"}},
 			wantState: StateAuthenticatedGCM,
@@ -386,7 +386,7 @@ func TestResolveAggregationBranches(t *testing.T) {
 		},
 		{
 			name:        "different tokens same user become mixed",
-			gcmToken:    providerpkg.TokenSet{AccessToken: "gcm-token"},
+			gcmToken:    _provider.TokenSet{AccessToken: "gcm-token"},
 			external:    CredentialStatus{Type: "https", Source: SourceOSXKeychain, Ownership: OwnershipExternal, State: StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo"},
 			verifier:    fakeVerifier{"gcm-token": {Username: "octo"}, "external-token": {Username: "octo"}},
 			wantState:   StateAuthenticatedMixed,
@@ -395,7 +395,7 @@ func TestResolveAggregationBranches(t *testing.T) {
 		},
 		{
 			name:        "bad gcm token with good external becomes external",
-			gcmToken:    providerpkg.TokenSet{AccessToken: "bad-token"},
+			gcmToken:    _provider.TokenSet{AccessToken: "bad-token"},
 			external:    CredentialStatus{Type: "https", Source: SourceOSXKeychain, Ownership: OwnershipExternal, State: StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo"},
 			verifier:    fakeVerifier{"external-token": {Username: "octo"}},
 			wantState:   StateAuthenticatedExternal,
@@ -406,7 +406,7 @@ func TestResolveAggregationBranches(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			manager := &Manager{
-				TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: tc.gcmToken}},
+				TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: tc.gcmToken}},
 				Verifier:   tc.verifier,
 				ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{
 					Credential: tc.external,
@@ -429,9 +429,9 @@ func TestResolveAggregationBranches(t *testing.T) {
 func TestResolveSSHAndGPGCapabilities(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
-	p.SSH = &profile.SSHConfig{KeyPath: "/missing/key"}
-	p.GPG = &profile.GPGConfig{KeyID: "ABC123"}
-	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}}}
+	p.SSH = &_profile.SSHConfig{KeyPath: "/missing/key"}
+	p.GPG = &_profile.GPGConfig{KeyID: "ABC123"}
+	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}}}
 
 	status, err := manager.Resolve(context.Background(), ResolveRequest{ProfileName: "work", Profile: p, Provider: def, InspectSSH: true})
 	if err != nil {
@@ -459,8 +459,8 @@ func TestResolveSSHOnlyUnauthenticatedAndNilSSH(t *testing.T) {
 		t.Fatalf("write key: %v", err)
 	}
 	p := testProfile()
-	p.SSH = &profile.SSHConfig{KeyPath: keyPath}
-	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{}}}
+	p.SSH = &_profile.SSHConfig{KeyPath: keyPath}
+	manager := &Manager{TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{}}}
 	status, err := manager.Resolve(context.Background(), ResolveRequest{ProfileName: "work", Profile: p, Provider: def, InspectSSH: true})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
@@ -484,7 +484,7 @@ func TestResolveVerifierAndAccountMismatchBranches(t *testing.T) {
 	p := testProfile()
 	key := TokenKey("work", def, p)
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "gcm-token"}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "gcm-token"}}},
 		Verifier:   fakeVerifier{"gcm-token": {Username: "different"}},
 	}
 
@@ -506,10 +506,10 @@ func TestResolveVerifierAndAccountMismatchBranches(t *testing.T) {
 func TestResolveMixedAccountMismatchKeepsMixedOwnership(t *testing.T) {
 	def := testDefinition()
 	p := testProfile()
-	p.Providers["github"] = profile.ProviderAccountConfig{Username: "expected"}
+	p.Providers["github"] = _profile.ProviderAccountConfig{Username: "expected"}
 	key := TokenKey("work", def, p)
 	manager := &Manager{
-		TokenStore: fakeTokenStore{tokens: map[providerpkg.TokenKey]providerpkg.TokenSet{key: {AccessToken: "gcm-token"}}},
+		TokenStore: fakeTokenStore{tokens: map[_provider.TokenKey]_provider.TokenSet{key: {AccessToken: "gcm-token"}}},
 		Verifier:   fakeVerifier{"gcm-token": {Username: "octo"}, "external-token": {Username: "octo"}},
 		ExternalInspector: fakeExternalInspector{inspection: GitCredentialInspection{Credential: CredentialStatus{
 			Type: "https", Source: SourceOSXKeychain, Ownership: OwnershipExternal, State: StateAuthenticatedExternal, Present: true, Secret: "external-token", Username: "octo",
@@ -534,14 +534,14 @@ func TestResolveMixedAccountMismatchKeepsMixedOwnership(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("duplicate finding was appended %d times", count)
 	}
-	status.applyAccountFindings(profile.ProviderAccountConfig{})
+	status.applyAccountFindings(_profile.ProviderAccountConfig{})
 }
 
 func TestPrimaryHostFallbacksAndFirstNonEmpty(t *testing.T) {
-	if got := PrimaryHost(providerpkg.Definition{WebURL: "https://example.com/team"}); got != "example.com" {
+	if got := PrimaryHost(_provider.Definition{WebURL: "https://example.com/team"}); got != "example.com" {
 		t.Fatalf("web fallback = %q", got)
 	}
-	if got := PrimaryHost(providerpkg.Definition{APIURL: "https://api.example.com/v1"}); got != "api.example.com" {
+	if got := PrimaryHost(_provider.Definition{APIURL: "https://api.example.com/v1"}); got != "api.example.com" {
 		t.Fatalf("api fallback = %q", got)
 	}
 	if got := firstNonEmpty("", "value"); got != "value" {

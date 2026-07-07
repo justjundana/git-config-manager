@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/term"
+	term "golang.org/x/term"
 )
 
 func TestDrawMenu_SingleSelect_CursorAtFirst(t *testing.T) {

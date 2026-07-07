@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/internal/profile"
-	providerpkg "github.com/justjundana/git-config-manager/internal/provider"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 type connectOptions struct {
@@ -75,7 +75,7 @@ func runConnect(ctx context.Context, profileName string, opts connectOptions) er
 	if err != nil {
 		return err
 	}
-	if !def.Capabilities.Has(providerpkg.CapabilityPATAuth) {
+	if !def.Capabilities.Has(_provider.CapabilityPATAuth) {
 		return fmt.Errorf("%s does not support PAT authentication in GCM yet", def.DisplayName)
 	}
 
@@ -87,50 +87,50 @@ func runConnect(ctx context.Context, profileName string, opts connectOptions) er
 		return fmt.Errorf("token cannot be empty")
 	}
 
-	sp := ui.NewSpinner(fmt.Sprintf("Verifying token with %s...", def.DisplayName))
+	sp := _ui.NewSpinner(fmt.Sprintf("Verifying token with %s...", def.DisplayName))
 	sp.Start()
 	username, displayName, err := verifyProviderPAT(ctx, def, token)
 	if err != nil {
 		sp.StopError("Token is not valid")
-		ui.Blank()
-		ui.Print("The token was rejected by %s at %s.", def.DisplayName, def.APIURL)
-		ui.Print("Check token scopes, expiration, revocation, and self-managed provider URL.")
+		_ui.Blank()
+		_ui.Print("The token was rejected by %s at %s.", def.DisplayName, def.APIURL)
+		_ui.Print("Check token scopes, expiration, revocation, and self-managed provider URL.")
 		return err
 	}
 	sp.Stop("Token verified!")
 
-	tokenSet := providerpkg.TokenSet{AccessToken: token, AuthMethod: providerpkg.AuthMethodPAT, TokenType: "pat"}
+	tokenSet := _provider.TokenSet{AccessToken: token, AuthMethod: _provider.AuthMethodPAT, TokenType: "pat"}
 	transitionOpts := providerTransitionOptions{AllowPrompt: !stdinMode, AutoConfirm: opts.yes}
-	ok, transitionErr := applyProfileProviderTransitionWithOptions(ctx, profileName, p, def, username, providerpkg.AuthMethodPAT, transitionOpts, func() error {
+	ok, transitionErr := applyProfileProviderTransitionWithOptions(ctx, profileName, p, def, username, _provider.AuthMethodPAT, transitionOpts, func() error {
 		return saveProviderToken(profileName, def, p, tokenSet)
 	})
 	if transitionErr != nil {
-		ctr.AuditLogger.Log(audit.ActionProviderLogin, profileName,
+		ctr.AuditLogger.Log(_audit.ActionProviderLogin, profileName,
 			map[string]string{"provider": string(def.ID), "method": "pat"}, transitionErr)
 		return transitionErr
 	}
 	if !ok {
-		ui.Info("Provider change cancelled")
+		_ui.Info("Provider change cancelled")
 		return nil
 	}
 
 	if err := ctr.ProfileManager.Update(p); err != nil {
-		ui.Warning("Token was saved, but profile metadata could not be updated: %v", err)
+		_ui.Warning("Token was saved, but profile metadata could not be updated: %v", err)
 	}
 
-	ctr.AuditLogger.Log(audit.ActionProviderLogin, profileName,
+	ctr.AuditLogger.Log(_audit.ActionProviderLogin, profileName,
 		map[string]string{"provider": string(def.ID), "user": username, "method": "pat"}, nil)
 
-	ui.Blank()
+	_ui.Blank()
 	if displayName != "" {
-		ui.Success("Connected %s to %s as %s (%s)", profileName, def.DisplayName, ui.Bold(username), displayName)
+		_ui.Success("Connected %s to %s as %s (%s)", profileName, def.DisplayName, _ui.Bold(username), displayName)
 	} else {
-		ui.Success("Connected %s to %s as %s", profileName, def.DisplayName, ui.Bold(username))
+		_ui.Success("Connected %s to %s as %s", profileName, def.DisplayName, _ui.Bold(username))
 	}
 
 	if isActiveProfile(profileName) {
 		configureGitCredentialsForProvider(profileName, p, def, tokenSet)
-		ui.Print("  Git credentials updated for the active profile.")
+		_ui.Print("  Git credentials updated for the active profile.")
 	}
 
 	if !stdinMode {
@@ -139,43 +139,43 @@ func runConnect(ctx context.Context, profileName string, opts connectOptions) er
 	return nil
 }
 
-func resolveConnectProvider(profileName string, p *profile.Profile, requested string) (providerpkg.Definition, error) {
+func resolveConnectProvider(profileName string, p *_profile.Profile, requested string) (_provider.Definition, error) {
 	if requested != "" {
 		id := normalizeProviderSelection(requested)
 		def, ok := ctr.ProviderRegistry.Get(id)
 		if !ok {
-			return providerpkg.Definition{}, fmt.Errorf("provider %q is not configured", requested)
+			return _provider.Definition{}, fmt.Errorf("provider %q is not configured", requested)
 		}
 		return def, nil
 	}
 
-	if def, ok := profileProviderDefinition(p, providerpkg.CapabilityPATAuth); ok {
+	if def, ok := profileProviderDefinition(p, _provider.CapabilityPATAuth); ok {
 		return def, nil
 	}
 
-	defs := providerDefinitionsWithCapability(providerpkg.CapabilityPATAuth)
+	defs := providerDefinitionsWithCapability(_provider.CapabilityPATAuth)
 	if len(defs) == 0 {
-		return providerpkg.Definition{}, fmt.Errorf("no provider supports PAT authentication")
+		return _provider.Definition{}, fmt.Errorf("no provider supports PAT authentication")
 	}
 	if isStdinPiped() {
-		return providerpkg.Definition{}, fmt.Errorf("--provider is required when connecting non-interactively")
+		return _provider.Definition{}, fmt.Errorf("--provider is required when connecting non-interactively")
 	}
 
 	options := make([]string, 0, len(defs))
-	byOption := make(map[string]providerpkg.Definition, len(defs))
+	byOption := make(map[string]_provider.Definition, len(defs))
 	for _, def := range defs {
 		option := providerOption(def)
 		options = append(options, option)
 		byOption[option] = def
 	}
-	selected, err := ui.AskSelect(fmt.Sprintf("Provider for profile %q:", profileName), options)
+	selected, err := _ui.AskSelect(fmt.Sprintf("Provider for profile %q:", profileName), options)
 	if err != nil {
-		return providerpkg.Definition{}, err
+		return _provider.Definition{}, err
 	}
 	return byOption[selected], nil
 }
 
-func readConnectToken(profileName string, def providerpkg.Definition, opts connectOptions) (string, bool, error) {
+func readConnectToken(profileName string, def _provider.Definition, opts connectOptions) (string, bool, error) {
 	stdinMode := opts.tokenStdin || isStdinPiped()
 	if stdinMode {
 		token, err := readStdinToken()
@@ -185,37 +185,37 @@ func readConnectToken(profileName string, def providerpkg.Definition, opts conne
 		return token, true, nil
 	}
 
-	ui.Header("%s Connect %s to %s", ui.IconKey, profileName, def.DisplayName)
-	ui.Blank()
-	ui.Print("Create a Personal Access Token for %s.", def.DisplayName)
+	_ui.Header("%s Connect %s to %s", _ui.IconKey, profileName, def.DisplayName)
+	_ui.Blank()
+	_ui.Print("Create a Personal Access Token for %s.", def.DisplayName)
 	if url := providerPATURL(def); url != "" {
-		ui.Print("Token settings: %s", ui.Cyan(url))
+		_ui.Print("Token settings: %s", _ui.Cyan(url))
 	}
 	if len(def.Scopes) > 0 {
-		ui.Print("Recommended scopes: %s", strings.Join(def.Scopes, ", "))
+		_ui.Print("Recommended scopes: %s", strings.Join(def.Scopes, ", "))
 	}
-	ui.Blank()
-	token, err := ui.AskPassword("Enter token")
+	_ui.Blank()
+	token, err := _ui.AskPassword("Enter token")
 	if err != nil {
 		return "", false, fmt.Errorf("could not read token input")
 	}
 	return token, false, nil
 }
 
-func verifyProviderPAT(ctx context.Context, def providerpkg.Definition, token string) (string, string, error) {
+func verifyProviderPAT(ctx context.Context, def _provider.Definition, token string) (string, string, error) {
 	user, err := ctr.ProviderClient.VerifyPAT(ctx, def, token)
 	return user.Username, user.Name, err
 }
 
-func providerPATURL(def providerpkg.Definition) string {
+func providerPATURL(def _provider.Definition) string {
 	webURL := strings.TrimRight(def.WebURL, "/")
 	if webURL == "" {
 		webURL = strings.TrimRight(def.CredentialServer(), "/")
 	}
 	switch def.ID {
-	case providerpkg.GitHubID:
+	case _provider.GitHubID:
 		return webURL + "/settings/tokens"
-	case providerpkg.GitLabID:
+	case _provider.GitLabID:
 		return webURL + "/-/user_settings/personal_access_tokens"
 	default:
 		return webURL

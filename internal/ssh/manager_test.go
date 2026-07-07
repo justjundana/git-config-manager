@@ -10,23 +10,23 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/crypto/ssh"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	ssh "golang.org/x/crypto/ssh"
 )
 
 func newTestManager(t *testing.T) *Manager {
 	t.Helper()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: t.TempDir(),
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
 		},
 	}
-	return NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	return NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 }
 
 func TestGenerate_Ed25519NoPassphrase(t *testing.T) {
@@ -666,11 +666,11 @@ func TestKeyPath_InvalidNames(t *testing.T) {
 }
 
 func TestList_NonExistentDirV2(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   "/nonexistent/ssh/dir",
-		Advanced: config.AdvancedConfig{SSHCommand: "ssh"},
+		Advanced: _config.AdvancedConfig{SSHCommand: "ssh"},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	keys, err := m.List()
 	if err != nil {
 		t.Fatalf("List should not error for non-existent dir: %v", err)
@@ -779,11 +779,11 @@ func TestGenerate_DefaultKeyType(t *testing.T) {
 }
 
 func TestGenerate_MkdirAllFailure(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   "/dev/null/cannot/create",
-		Advanced: config.AdvancedConfig{SSHCommand: "ssh"},
+		Advanced: _config.AdvancedConfig{SSHCommand: "ssh"},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	_, err := m.Generate(GenerateOptions{Profile: "fail", KeyType: "ed25519"})
 	if err == nil {
 		t.Fatal("expected error for impossible dir")
@@ -868,8 +868,8 @@ func TestExpandPath_EmptyHomeDir(t *testing.T) {
 }
 
 func TestNewManager(t *testing.T) {
-	cfg := &config.Config{SSHDir: "/tmp"}
-	log := logger.New(logger.LevelError, os.Stderr)
+	cfg := &_config.Config{SSHDir: "/tmp"}
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 	if m == nil {
 		t.Fatal("expected non-nil manager")
@@ -1064,9 +1064,9 @@ func TestWritePrivateKey_BadDir(t *testing.T) {
 
 func TestGetFingerprint_ValidKey(t *testing.T) {
 	tmp := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.SSHDir = tmp
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 
 	// Generate a real key pair
@@ -1086,9 +1086,9 @@ func TestGetFingerprint_ValidKey(t *testing.T) {
 
 func TestGetFingerprint_NoPubKey(t *testing.T) {
 	tmp := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.SSHDir = tmp
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 
 	_, err := m.getFingerprint(filepath.Join(tmp, "nonexistent_key"))
@@ -1099,9 +1099,9 @@ func TestGetFingerprint_NoPubKey(t *testing.T) {
 
 func TestList_WithMixedFiles2(t *testing.T) {
 	tmp := t.TempDir()
-	cfg := config.DefaultConfig()
+	cfg := _config.DefaultConfig()
 	cfg.SSHDir = tmp
-	log := logger.New(logger.LevelError, os.Stderr)
+	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
 
 	// Create a valid key pair
@@ -1122,15 +1122,15 @@ func TestList_WithMixedFiles2(t *testing.T) {
 }
 
 func TestList_NonexistentDir(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: "/tmp/gcm-nonexistent-ssh-dir-" + t.Name(),
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	keys, err := m.List()
 	if err != nil {
@@ -1266,13 +1266,13 @@ func TestTestConnection_TildeExpansion(t *testing.T) {
 
 func TestTestConnection_CustomSSHCommand(t *testing.T) {
 	// Use a non-existent ssh command to trigger exec error
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: t.TempDir(),
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "/nonexistent/ssh/binary",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.TestConnection("/some/key")
 	if err == nil {
@@ -1320,11 +1320,11 @@ func TestList_ReadDirPermissionError(t *testing.T) {
 	os.Chmod(sshDir, 0o000)
 	t.Cleanup(func() { os.Chmod(sshDir, 0o755) })
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   sshDir,
-		Advanced: config.AdvancedConfig{SSHCommand: "ssh"},
+		Advanced: _config.AdvancedConfig{SSHCommand: "ssh"},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.List()
 	if err == nil {
@@ -1443,15 +1443,15 @@ func TestGenerate_MkdirFails(t *testing.T) {
 	sshDir := filepath.Join(tmp, "ssh")
 	os.WriteFile(sshDir, []byte("blocker"), 0o644)
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: sshDir,
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.Generate(GenerateOptions{
 		Profile: "faildir",
@@ -1471,15 +1471,15 @@ func TestGenerate_PublicKeyWriteFail(t *testing.T) {
 	sshDir := filepath.Join(tmp, "ssh")
 	os.MkdirAll(sshDir, 0o700)
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: sshDir,
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// Generate a key successfully first
 	info, err := m.Generate(GenerateOptions{
@@ -1515,15 +1515,15 @@ func TestList_EmptyDirV2(t *testing.T) {
 }
 
 func TestList_NonExistentDirV3(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: "/nonexistent/ssh/dir/xyz12345",
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	keys, err := m.List()
 	if err != nil {
@@ -1617,9 +1617,9 @@ func TestGenerate_KeyAlreadyExists(t *testing.T) {
 }
 
 func TestGenerate_MkdirAllBlockedByFile(t *testing.T) {
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: filepath.Join(t.TempDir(), "blocked"),
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 			GPGCommand: "gpg",
 			GitCommand: "git",
@@ -1627,7 +1627,7 @@ func TestGenerate_MkdirAllBlockedByFile(t *testing.T) {
 	}
 	// Create a regular file at the SSHDir path so MkdirAll fails
 	os.WriteFile(cfg.SSHDir, []byte("blocker"), 0o600)
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.Generate(GenerateOptions{Profile: "test", KeyType: "ed25519"})
 	if err == nil {
@@ -1693,8 +1693,8 @@ func TestWritePrivateKey_FileAlreadyExists(t *testing.T) {
 
 func TestKeyPath_PathTraversal(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.keyPath("../escape", "ed25519")
 	if err == nil {
@@ -1704,8 +1704,8 @@ func TestKeyPath_PathTraversal(t *testing.T) {
 
 func TestKeyPath_EmptyProfile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.keyPath("", "ed25519")
 	if err == nil {
@@ -1715,8 +1715,8 @@ func TestKeyPath_EmptyProfile(t *testing.T) {
 
 func TestKeyPath_SlashInProfile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.keyPath("a/b", "ed25519")
 	if err == nil {
@@ -1726,8 +1726,8 @@ func TestKeyPath_SlashInProfile(t *testing.T) {
 
 func TestKeyPath_ValidProfile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	path, err := m.keyPath("myprofile", "ed25519")
 	if err != nil {
@@ -1740,8 +1740,8 @@ func TestKeyPath_ValidProfile(t *testing.T) {
 
 func TestGetFingerprint_ValidPublicKey(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// Generate a real key pair
 	opts := GenerateOptions{
@@ -1765,8 +1765,8 @@ func TestGetFingerprint_ValidPublicKey(t *testing.T) {
 
 func TestGetFingerprint_BadPublicKey_FallsBackToSSHKeygen(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// Write invalid public key data
 	keyPath := filepath.Join(dir, "bad_key")
@@ -1781,13 +1781,13 @@ func TestGetFingerprint_BadPublicKey_FallsBackToSSHKeygen(t *testing.T) {
 
 func TestAddToAgent_BadKey(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: dir,
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	err := m.AddToAgent(filepath.Join(dir, "nonexistent_key"))
 	if err == nil {
@@ -1797,8 +1797,8 @@ func TestAddToAgent_BadKey(t *testing.T) {
 
 func TestGetFingerprint_NoPubFile(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// No .pub file at all — ReadFile fails, falls through to ssh-keygen which also fails
 	keyPath := filepath.Join(dir, "no_pub_key")
@@ -1813,13 +1813,13 @@ func TestGetFingerprint_NoPubFile(t *testing.T) {
 
 func TestGenerate_WritePublicKeyError(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: dir,
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// Generate a key first
 	opts := GenerateOptions{
@@ -1855,13 +1855,13 @@ func TestGenerate_WritePublicKeyError(t *testing.T) {
 
 func TestGenerate_DSAKeyType(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir: dir,
-		Advanced: config.AdvancedConfig{
+		Advanced: _config.AdvancedConfig{
 			SSHCommand: "ssh",
 		},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	_, err := m.Generate(GenerateOptions{
 		Profile: "badtype",
@@ -1878,11 +1878,11 @@ func TestTestConnection_SuccessGreeting(t *testing.T) {
 	fakeSSH := filepath.Join(dir, "fake-ssh")
 	os.WriteFile(fakeSSH, []byte("#!/bin/sh\necho 'Hi testuser! You have successfully authenticated'\nexit 1\n"), 0o755)
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   dir,
-		Advanced: config.AdvancedConfig{SSHCommand: fakeSSH},
+		Advanced: _config.AdvancedConfig{SSHCommand: fakeSSH},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	output, err := m.TestConnection(filepath.Join(dir, "somekey"))
 	if err != nil {
 		t.Fatalf("expected success for greeting, got: %v", err)
@@ -1897,11 +1897,11 @@ func TestTestConnection_ExitZeroNoGreeting(t *testing.T) {
 	fakeSSH := filepath.Join(dir, "fake-ssh")
 	os.WriteFile(fakeSSH, []byte("#!/bin/sh\necho 'some other output'\nexit 0\n"), 0o755)
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   dir,
-		Advanced: config.AdvancedConfig{SSHCommand: fakeSSH},
+		Advanced: _config.AdvancedConfig{SSHCommand: fakeSSH},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	output, err := m.TestConnection(filepath.Join(dir, "somekey"))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -1920,11 +1920,11 @@ func TestTestConnectionToHost_DefaultHostPortAndGitLabGreeting(t *testing.T) {
 		t.Fatalf("write fake ssh: %v", err)
 	}
 
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   dir,
-		Advanced: config.AdvancedConfig{SSHCommand: fakeSSH},
+		Advanced: _config.AdvancedConfig{SSHCommand: fakeSSH},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	if output, err := m.TestConnectionToHost(filepath.Join(dir, "somekey"), "", 0); err != nil || !strings.Contains(output, "Welcome to GitLab") {
 		t.Fatalf("default host connection = %q, %v", output, err)
 	}
@@ -1957,11 +1957,11 @@ func TestTestConnectionToHost_InvalidHost(t *testing.T) {
 
 func TestAddToAgent_WithRealKey(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{
+	cfg := &_config.Config{
 		SSHDir:   dir,
-		Advanced: config.AdvancedConfig{SSHCommand: "ssh"},
+		Advanced: _config.AdvancedConfig{SSHCommand: "ssh"},
 	}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	opts := GenerateOptions{Profile: "agent-real", KeyType: "ed25519", Comment: "test"}
 	result, err := m.Generate(opts)
 	if err != nil {
@@ -1972,8 +1972,8 @@ func TestAddToAgent_WithRealKey(t *testing.T) {
 
 func TestGetFingerprint_FallbackToSSHKeygen(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 	opts := GenerateOptions{Profile: "fp-fb", KeyType: "ed25519", Comment: "test"}
 	result, err := m.Generate(opts)
 	if err != nil {
@@ -1986,8 +1986,8 @@ func TestGetFingerprint_FallbackToSSHKeygen(t *testing.T) {
 
 func TestGetFingerprint_SSHKeygenSucceeds(t *testing.T) {
 	dir := t.TempDir()
-	cfg := &config.Config{SSHDir: dir}
-	m := NewManager(cfg, logger.New(logger.LevelError, os.Stderr))
+	cfg := &_config.Config{SSHDir: dir}
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
 
 	// Create a fake ssh-keygen in PATH that outputs a valid fingerprint
 	binDir := filepath.Join(dir, "bin")

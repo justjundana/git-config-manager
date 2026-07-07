@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
 	"gopkg.in/yaml.v3"
 )
@@ -25,13 +25,13 @@ var (
 
 // Manager handles profile CRUD operations.
 type Manager struct {
-	cfg     *config.Config
-	fileSvc *fileSvc.Service
-	log     *logger.Logger
+	cfg     *_config.Config
+	fileSvc *_file.Service
+	log     *_logger.Logger
 }
 
 // NewManager creates a new profile manager.
-func NewManager(cfg *config.Config, fs *fileSvc.Service, log *logger.Logger) *Manager {
+func NewManager(cfg *_config.Config, fs *_file.Service, log *_logger.Logger) *Manager {
 	return &Manager{
 		cfg:     cfg,
 		fileSvc: fs,
@@ -75,7 +75,7 @@ func (m *Manager) Create(p *Profile) error {
 		return fmt.Errorf("saving profile: %w", err)
 	}
 
-	m.log.Debug("Profile created", logger.F("profile", p.Name))
+	m.log.Debug("Profile created", _logger.F("profile", p.Name))
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (m *Manager) Update(p *Profile) error {
 		return fmt.Errorf("saving profile: %w", err)
 	}
 
-	m.log.Debug("Profile updated", logger.F("profile", p.Name))
+	m.log.Debug("Profile updated", _logger.F("profile", p.Name))
 	return nil
 }
 
@@ -164,7 +164,7 @@ func (m *Manager) Delete(name string, force ...bool) error {
 		m.cfg.DefaultProfile = ""
 	}
 
-	m.log.Debug("Profile deleted", logger.F("profile", name))
+	m.log.Debug("Profile deleted", _logger.F("profile", name))
 	return nil
 }
 
@@ -181,7 +181,7 @@ func (m *Manager) List() ([]*Profile, error) {
 		p, err := m.Get(name)
 		if err != nil {
 			m.log.Warn("Skipping invalid profile",
-				logger.F("file", f), logger.F("error", err))
+				_logger.F("file", f), _logger.F("error", err))
 			continue
 		}
 		profiles = append(profiles, p)

@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 
-	"github.com/justjundana/git-config-manager/internal/audit"
-	"github.com/justjundana/git-config-manager/pkg/ui"
+	_audit "github.com/justjundana/git-config-manager/internal/audit"
+	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 )
 
 func newBackupCmd() *cobra.Command {
@@ -27,24 +27,24 @@ func newBackupCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use: "create", Short: "Create a backup",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			sp := ui.NewSpinner("Creating backup...")
+			sp := _ui.NewSpinner("Creating backup...")
 			sp.Start()
 
 			info, err := ctr.BackupManager.Create()
 			if err != nil {
 				sp.StopError("Backup failed")
-				ctr.AuditLogger.Log(audit.ActionBackupCreate, "", nil, err)
+				ctr.AuditLogger.Log(_audit.ActionBackupCreate, "", nil, err)
 				return err
 			}
-			ctr.AuditLogger.Log(audit.ActionBackupCreate, "",
+			ctr.AuditLogger.Log(_audit.ActionBackupCreate, "",
 				map[string]string{"path": info.Path}, nil)
 
 			sp.Stop("Backup created!")
-			ui.Blank()
-			ui.Detail("Path", info.Path)
-			ui.Detail("Profiles", fmt.Sprintf("%d", info.Profiles))
-			ui.Detail("Templates", fmt.Sprintf("%d", info.Templates))
-			ui.Detail("Size", formatBytes(info.Size))
+			_ui.Blank()
+			_ui.Detail("Path", info.Path)
+			_ui.Detail("Profiles", fmt.Sprintf("%d", info.Profiles))
+			_ui.Detail("Templates", fmt.Sprintf("%d", info.Templates))
+			_ui.Detail("Size", formatBytes(info.Size))
 
 			return nil
 		},
@@ -61,7 +61,7 @@ func newBackupListCmd() *cobra.Command {
 			}
 
 			if len(backups) == 0 {
-				ui.Info("No backups found. Create one: gcm backup create")
+				_ui.Info("No backups found. Create one: gcm backup create")
 				return nil
 			}
 
@@ -75,7 +75,7 @@ func newBackupListCmd() *cobra.Command {
 				})
 			}
 
-			ui.SimpleTable(headers, rows)
+			_ui.SimpleTable(headers, rows)
 			return nil
 		},
 	}
@@ -86,28 +86,28 @@ func newBackupRestoreCmd() *cobra.Command {
 		Use: "restore <file>", Short: "Restore from backup", Args: requireArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if !ctr.FileService.Exists(args[0]) {
-				ui.Error("backup file not found: %s", args[0])
-				ui.Blank()
-				ui.Print("  To see available backups: gcm backup list")
+				_ui.Error("backup file not found: %s", args[0])
+				_ui.Blank()
+				_ui.Print("  To see available backups: gcm backup list")
 				return fmt.Errorf("backup file not found: %s", args[0])
 			}
 
-			confirm, err := ui.AskConfirm("This will overwrite current data. Continue?", false)
+			confirm, err := _ui.AskConfirm("This will overwrite current data. Continue?", false)
 			if err != nil || !confirm {
-				ui.Info("Cancelled")
+				_ui.Info("Cancelled")
 				return nil
 			}
 
-			sp := ui.NewSpinner("Restoring backup...")
+			sp := _ui.NewSpinner("Restoring backup...")
 			sp.Start()
 
 			if err := ctr.BackupManager.Restore(args[0]); err != nil {
 				sp.StopError("Restore failed")
-				ctr.AuditLogger.Log(audit.ActionBackupRestore, "",
+				ctr.AuditLogger.Log(_audit.ActionBackupRestore, "",
 					map[string]string{"path": args[0]}, err)
 				return err
 			}
-			ctr.AuditLogger.Log(audit.ActionBackupRestore, "",
+			ctr.AuditLogger.Log(_audit.ActionBackupRestore, "",
 				map[string]string{"path": args[0]}, nil)
 
 			sp.Stop("Backup restored!")
@@ -128,9 +128,9 @@ func newBackupPruneCmd() *cobra.Command {
 			}
 
 			if removed == 0 {
-				ui.Info("No backups to remove")
+				_ui.Info("No backups to remove")
 			} else {
-				ui.Success("Removed %d old backups", removed)
+				_ui.Success("Removed %d old backups", removed)
 			}
 			return nil
 		},

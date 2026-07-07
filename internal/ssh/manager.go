@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/ssh"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	fileSvc "github.com/justjundana/git-config-manager/internal/service/file"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	ssh "golang.org/x/crypto/ssh"
 )
 
 // defaultCommandTimeout is applied to external ssh/ssh-add/ssh-keygen calls
@@ -49,12 +49,12 @@ var (
 
 // Manager handles SSH key operations.
 type Manager struct {
-	cfg *config.Config
-	log *logger.Logger
+	cfg *_config.Config
+	log *_logger.Logger
 }
 
 // NewManager creates a new SSH manager.
-func NewManager(cfg *config.Config, log *logger.Logger) *Manager {
+func NewManager(cfg *_config.Config, log *_logger.Logger) *Manager {
 	return &Manager{cfg: cfg, log: log}
 }
 
@@ -153,9 +153,9 @@ func (m *Manager) Generate(opts GenerateOptions) (*KeyInfo, error) {
 	fingerprint := ssh.FingerprintSHA256(pubKey)
 
 	m.log.Debug("SSH key generated",
-		logger.F("profile", opts.Profile),
-		logger.F("type", opts.KeyType),
-		logger.F("path", keyPath))
+		_logger.F("profile", opts.Profile),
+		_logger.F("type", opts.KeyType),
+		_logger.F("path", keyPath))
 
 	return &KeyInfo{
 		Path:        keyPath,
@@ -499,5 +499,5 @@ func (m *Manager) getAgentKeys() []string {
 }
 
 func expandPath(path string) string {
-	return fileSvc.ExpandPath(path)
+	return _file.ExpandPath(path)
 }
