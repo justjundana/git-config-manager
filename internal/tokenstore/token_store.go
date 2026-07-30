@@ -25,6 +25,7 @@ package tokenstore
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,10 +34,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/justjundana/git-config-manager/internal/config"
-	"github.com/justjundana/git-config-manager/internal/provider"
-	cryptoSvc "github.com/justjundana/git-config-manager/internal/service/crypto"
-	"github.com/justjundana/git-config-manager/pkg/logger"
+	_config "github.com/justjundana/git-config-manager/internal/config"
+	_provider "github.com/justjundana/git-config-manager/internal/provider"
+	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
+	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
 	"github.com/zalando/go-keyring"
 )
@@ -54,11 +55,43 @@ const (
 	tokenFormatV2 byte = 0x02
 )
 
+// errKeychainDisabled is returned by every keyring hook when OS keychain
+// access has been switched off.
+var errKeychainDisabled = errors.New("OS keychain access disabled by GCM_NO_KEYCHAIN")
+
+// keychainDisabled reports whether OS keychain access is switched off via the
+// GCM_NO_KEYCHAIN environment variable.
+//
+// The test suite sets it (see internal/testutil) so that a test can never
+// reach the developer's real login keychain — on macOS an unguarded write
+// pops a "Keychain Not Found … Reset To Defaults" dialog. It is also useful on
+// headless or containerised machines where the keychain would block or prompt.
+func keychainDisabled() bool {
+	return os.Getenv("GCM_NO_KEYCHAIN") == "1"
+}
+
 // Keyring function hooks – overridden in tests to avoid OS keychain.
+// Each hook honours keychainDisabled before reaching the real keyring, so the
+// kill-switch holds even for call sites that forget to stub these.
 var (
-	keyringSet    = keyring.Set
-	keyringGet    = keyring.Get
-	keyringDelete = keyring.Delete
+	keyringSet = func(service, user, password string) error {
+		if keychainDisabled() {
+			return errKeychainDisabled
+		}
+		return keyring.Set(service, user, password)
+	}
+	keyringGet = func(service, user string) (string, error) {
+		if keychainDisabled() {
+			return "", errKeychainDisabled
+		}
+		return keyring.Get(service, user)
+	}
+	keyringDelete = func(service, user string) error {
+		if keychainDisabled() {
+			return errKeychainDisabled
+		}
+		return keyring.Delete(service, user)
+	}
 )
 
 // IsKeychainAvailable performs a non-destructive probe to determine if the
@@ -89,8 +122,8 @@ var (
 
 // Crypto-operation hooks – overridden in tests to simulate crypto errors.
 var (
-	generateSalt = func(c *cryptoSvc.Service) ([]byte, error) { return c.GenerateSalt() }
-	encryptData  = func(c *cryptoSvc.Service, plaintext, key []byte) ([]byte, error) { return c.Encrypt(plaintext, key) }
+	generateSalt = func(c *_crypto.Service) ([]byte, error) { return c.GenerateSalt() }
+	encryptData  = func(c *_crypto.Service, plaintext, key []byte) ([]byte, error) { return c.Encrypt(plaintext, key) }
 )
 
 var marshalTokenSet = json.Marshal
@@ -102,9 +135,9 @@ type PromptFunc func(msg string) (string, error)
 
 // TokenStore handles secure persistence of provider access tokens.
 type TokenStore struct {
-	cfg        *config.Config
-	crypto     *cryptoSvc.Service
-	log        *logger.Logger
+	cfg        *_config.Config
+	crypto     *_crypto.Service
+	log        *_logger.Logger
 	promptFunc PromptFunc
 
 	// cachedPassword caches the master password as a byte slice so it can
@@ -117,7 +150,7 @@ type TokenStore struct {
 // NewTokenStore creates a token store configured according to the
 // SecurityConfig. promptFunc is called at most once to obtain the master
 // password when encrypted-file storage is active.
-func NewTokenStore(cfg *config.Config, crypto *cryptoSvc.Service, log *logger.Logger, prompt PromptFunc) *TokenStore {
+func NewTokenStore(cfg *_config.Config, crypto *_crypto.Service, log *_logger.Logger, prompt PromptFunc) *TokenStore {
 	return &TokenStore{
 		cfg:        cfg,
 		crypto:     crypto,
@@ -148,7 +181,7 @@ func (ts *TokenStore) Delete(profile string) error {
 }
 
 // SaveTokenSet persists a provider-aware token set.
-func (ts *TokenStore) SaveTokenSet(key provider.TokenKey, token provider.TokenSet) error {
+func (ts *TokenStore) SaveTokenSet(key _provider.TokenKey, token _provider.TokenSet) error {
 	if token.AccessToken == "" {
 		return fmt.Errorf("access token cannot be empty")
 	}
@@ -168,36 +201,36 @@ func (ts *TokenStore) SaveTokenSet(key provider.TokenKey, token provider.TokenSe
 
 // LoadTokenSet retrieves a provider-aware token set. For GitHub, it falls back
 // to the legacy profile-only token key to preserve existing installations.
-func (ts *TokenStore) LoadTokenSet(key provider.TokenKey) (provider.TokenSet, error) {
+func (ts *TokenStore) LoadTokenSet(key _provider.TokenKey) (_provider.TokenSet, error) {
 	storageKey, err := providerTokenStorageKey(key)
 	if err != nil {
-		return provider.TokenSet{}, err
+		return _provider.TokenSet{}, err
 	}
 	raw, err := ts.loadTokenValue(storageKey)
 	if err != nil && isLegacyGitHubTokenKey(key) {
 		raw, err = ts.loadTokenValue(key.Profile)
 	}
 	if err != nil {
-		return provider.TokenSet{}, err
+		return _provider.TokenSet{}, err
 	}
 
-	var token provider.TokenSet
+	var token _provider.TokenSet
 	if strings.HasPrefix(strings.TrimSpace(raw), "{") {
 		if err := json.Unmarshal([]byte(raw), &token); err != nil {
-			return provider.TokenSet{}, fmt.Errorf("parsing token set: %w", err)
+			return _provider.TokenSet{}, fmt.Errorf("parsing token set: %w", err)
 		}
 	} else {
-		token = provider.TokenSet{AccessToken: raw, AuthMethod: provider.AuthMethodLegacy}
+		token = _provider.TokenSet{AccessToken: raw, AuthMethod: _provider.AuthMethodLegacy}
 	}
 	if token.AccessToken == "" {
-		return provider.TokenSet{}, fmt.Errorf("empty token for profile %q provider %q", key.Profile, key.Provider)
+		return _provider.TokenSet{}, fmt.Errorf("empty token for profile %q provider %q", key.Profile, key.Provider)
 	}
 	return token, nil
 }
 
 // DeleteTokenSet removes a provider-aware token set. GitHub legacy tokens are
 // also deleted when the key resolves to the default GitHub provider.
-func (ts *TokenStore) DeleteTokenSet(key provider.TokenKey) error {
+func (ts *TokenStore) DeleteTokenSet(key _provider.TokenKey) error {
 	storageKey, err := providerTokenStorageKey(key)
 	if err != nil {
 		return err
@@ -248,7 +281,7 @@ func plaintextTokenStorageDisabledError() error {
 	return fmt.Errorf("plaintext token storage disabled; enable security.use_keychain, enable security.encrypt_tokens with security.master_password, or explicitly set security.allow_plaintext_tokens")
 }
 
-func providerTokenStorageKey(key provider.TokenKey) (string, error) {
+func providerTokenStorageKey(key _provider.TokenKey) (string, error) {
 	if key.Profile == "" {
 		return "", fmt.Errorf("profile name cannot be empty")
 	}
@@ -296,9 +329,9 @@ func safeTokenComponent(value string) string {
 	return strings.Trim(b.String(), "_")
 }
 
-func isLegacyGitHubTokenKey(key provider.TokenKey) bool {
+func isLegacyGitHubTokenKey(key _provider.TokenKey) bool {
 	host := strings.ToLower(strings.TrimSpace(key.Host))
-	return key.Provider == provider.GitHubID && key.Account == "" && (host == "" || host == "github.com")
+	return key.Provider == _provider.GitHubID && key.Account == "" && (host == "" || host == "github.com")
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +341,7 @@ func isLegacyGitHubTokenKey(key provider.TokenKey) bool {
 func (ts *TokenStore) saveKeychain(profile, token string) error {
 	if err := keyringSet(keychainService, profile, token); err != nil {
 		ts.log.Debug("Keychain unavailable",
-			logger.F("error", err.Error()), logger.F("profile", profile))
+			_logger.F("error", err.Error()), _logger.F("profile", profile))
 		if ts.cfg.Security.EncryptTokens && ts.cfg.Security.MasterPassword {
 			return ts.saveEncrypted(profile, token)
 		}
@@ -317,7 +350,7 @@ func (ts *TokenStore) saveKeychain(profile, token string) error {
 		}
 		return ts.savePlain(profile, token)
 	}
-	ts.log.Debug("Token saved to OS keychain", logger.F("profile", profile))
+	ts.log.Debug("Token saved to OS keychain", _logger.F("profile", profile))
 	return nil
 }
 
@@ -325,7 +358,7 @@ func (ts *TokenStore) loadKeychain(profile string) (string, error) {
 	token, err := keyringGet(keychainService, profile)
 	if err != nil {
 		ts.log.Debug("Keychain read failed",
-			logger.F("error", err.Error()), logger.F("profile", profile))
+			_logger.F("error", err.Error()), _logger.F("profile", profile))
 		if ts.cfg.Security.EncryptTokens && ts.cfg.Security.MasterPassword {
 			if t, e := ts.loadEncrypted(profile); e == nil {
 				return t, nil
@@ -346,7 +379,8 @@ func (ts *TokenStore) loadKeychain(profile string) (string, error) {
 
 func (ts *TokenStore) deleteKeychain(profile string) error {
 	err := keyringDelete(keychainService, profile)
-	if err != nil && !isKeyringNotFound(err) {
+	// A disabled keychain holds nothing, so there is nothing to delete.
+	if err != nil && !isKeyringNotFound(err) && !errors.Is(err, errKeychainDisabled) {
 		return fmt.Errorf("deleting token from keychain: %w", err)
 	}
 	// Also clean up any leftover file from a previous storage mode.
@@ -497,7 +531,7 @@ func (ts *TokenStore) savePlain(profile, token string) error {
 		return plaintextTokenStorageDisabledError()
 	}
 	ts.log.Debug("Saving token in plain-text mode (file permissions only)",
-		logger.F("profile", profile))
+		_logger.F("profile", profile))
 	return ts.writeTokenFile(profile, []byte(token))
 }
 
@@ -529,7 +563,7 @@ func sanitizeTokenPath(profile string) (string, error) {
 	if strings.ContainsAny(profile, `/\`) || strings.Contains(profile, "..") {
 		return "", fmt.Errorf("invalid profile name %q", profile)
 	}
-	tokenDir := filepath.Join(config.GCMDir(), "tokens")
+	tokenDir := filepath.Join(_config.GCMDir(), "tokens")
 	baseAbs, err := filepathAbs(tokenDir)
 	if err != nil {
 		return "", fmt.Errorf("resolving tokens dir: %w", err)

@@ -9,6 +9,7 @@ import (
 
 	_config "github.com/justjundana/git-config-manager/internal/config"
 	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
+	_testutil "github.com/justjundana/git-config-manager/internal/testutil"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 
 	"github.com/zalando/go-keyring"
@@ -1335,4 +1336,12 @@ func TestIsKeychainAvailable_Unavailable(t *testing.T) {
 	if IsKeychainAvailable() {
 		t.Error("expected IsKeychainAvailable to return false when keychain errors")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }
