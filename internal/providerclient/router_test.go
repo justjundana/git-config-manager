@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	_gitlab "github.com/justjundana/git-config-manager/internal/gitlab"
 	_provider "github.com/justjundana/git-config-manager/internal/provider"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func TestRouterVerifyPATRoutesToProviderClient(t *testing.T) {
@@ -433,4 +435,12 @@ func (s *stubAdapter) UploadGPGKey(context.Context, _provider.TokenSet, string) 
 
 func (s *stubAdapter) DeleteGPGKey(context.Context, _provider.TokenSet, string) (bool, error) {
 	return true, nil
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

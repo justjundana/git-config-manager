@@ -62,7 +62,7 @@ var errKeychainDisabled = errors.New("OS keychain access disabled by GCM_NO_KEYC
 // keychainDisabled reports whether OS keychain access is switched off via the
 // GCM_NO_KEYCHAIN environment variable.
 //
-// The test suite sets it (see internal/testutil) so that a test can never
+// The test suite sets it (see pkg/testutil) so that a test can never
 // reach the developer's real login keychain — on macOS an unguarded write
 // pops a "Keychain Not Found … Reset To Defaults" dialog. It is also useful on
 // headless or containerised machines where the keychain would block or prompt.

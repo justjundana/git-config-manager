@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func newTestManager(t *testing.T) *Manager {
@@ -797,4 +798,12 @@ func TestIsInstalled_FileDoesNotExist(t *testing.T) {
 	if configFile == "" {
 		t.Error("expected configFile path even when file doesn't exist")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

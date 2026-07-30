@@ -10,6 +10,7 @@ import (
 	_profile "github.com/justjundana/git-config-manager/internal/profile"
 	_provider "github.com/justjundana/git-config-manager/internal/provider"
 	_providerclient "github.com/justjundana/git-config-manager/internal/providerclient"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 type fakeTokenStore struct {
@@ -550,4 +551,12 @@ func TestPrimaryHostFallbacksAndFirstNonEmpty(t *testing.T) {
 	if got := firstNonEmpty(""); got != "" {
 		t.Fatalf("firstNonEmpty empty = %q", got)
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

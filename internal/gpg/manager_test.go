@@ -8,6 +8,7 @@ import (
 
 	_config "github.com/justjundana/git-config-manager/internal/config"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func writeFakeGPG(t *testing.T, dir string) {
@@ -1982,4 +1983,12 @@ esac
 	if err != nil {
 		t.Fatalf("Delete should succeed when only secret key deletion fails: %v", err)
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

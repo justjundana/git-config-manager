@@ -13,6 +13,7 @@ import (
 	_config "github.com/justjundana/git-config-manager/internal/config"
 	_provider "github.com/justjundana/git-config-manager/internal/provider"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func testClient(t *testing.T, handler http.HandlerFunc) *Client {
@@ -418,4 +419,12 @@ func TestNormalizeSSHKeyShortInput(t *testing.T) {
 	if got := normalizeSSHKey("  "); got != "" {
 		t.Fatalf("normalizeSSHKey blank = %q", got)
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

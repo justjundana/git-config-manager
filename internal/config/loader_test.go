@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	_testutil "github.com/justjundana/git-config-manager/internal/testutil"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 type fakeTempFile struct {

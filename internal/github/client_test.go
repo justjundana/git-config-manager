@@ -20,6 +20,7 @@ import (
 	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
 	_tokenstore "github.com/justjundana/git-config-manager/internal/tokenstore"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 // plainTextConfig returns a config with all token encryption and keychain
@@ -2366,4 +2367,12 @@ func TestApiDelete_InvalidURL(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

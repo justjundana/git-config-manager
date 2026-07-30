@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func TestLogLevels(t *testing.T) {
@@ -252,4 +254,12 @@ func TestFatal_PackageLevel_ExitsWithCode1(t *testing.T) {
 	if !strings.Contains(string(output), "pkg fatal message") {
 		t.Errorf("output should contain 'pkg fatal message', got: %s", output)
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

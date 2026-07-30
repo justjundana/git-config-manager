@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	_config "github.com/justjundana/git-config-manager/internal/config"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 )
 
@@ -135,4 +136,12 @@ func TestMasterPasswordPrompt_DefaultIsCallable(t *testing.T) {
 	if pw != "testpassword" {
 		t.Errorf("got %q, want %q", pw, "testpassword")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

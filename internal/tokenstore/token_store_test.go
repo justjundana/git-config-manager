@@ -9,8 +9,8 @@ import (
 
 	_config "github.com/justjundana/git-config-manager/internal/config"
 	_crypto "github.com/justjundana/git-config-manager/internal/service/crypto"
-	_testutil "github.com/justjundana/git-config-manager/internal/testutil"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 
 	"github.com/zalando/go-keyring"
 )

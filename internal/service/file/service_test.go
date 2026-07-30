@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 type fakeAtomicFile struct {
@@ -1211,4 +1213,12 @@ func TestCopyFile_IOCopyError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when io.Copy fails")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_config "github.com/justjundana/git-config-manager/internal/config"
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func setupTestLogger(t *testing.T, enabled bool) *Logger {
@@ -479,4 +480,12 @@ func TestReadLog_CorruptJSON(t *testing.T) {
 	if len(entries) != 0 {
 		t.Errorf("expected 0 entries, got %d", len(entries))
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }
