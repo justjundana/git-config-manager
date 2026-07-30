@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -117,21 +118,96 @@ func SetConfigPathForTesting(path string) func() {
 	return func() { configPathFn = orig }
 }
 
-// validateConfigPaths is a safety check that prevents saving config with
-// obviously incorrect git_command values (e.g. paths to non-existent files).
-// This catches scenarios where test data accidentally leaks into production config.
-func validateConfigPaths(cfg *Config, _ string) error {
+// validateConfigPaths is a safety check that prevents test data from leaking
+// into the production config. It rejects obviously incorrect git_command
+// values, and — more importantly — refuses to relocate GCM's data
+// directories into the OS temporary area.
+//
+// The second check exists because of a real failure mode: a Config built by a
+// test points ProfilesDir at t.TempDir(), and if that Config reaches Save()
+// while configPath still resolves to the user's real ~/.gcm/config.yaml, every
+// profile created from then on is written into a directory the OS purges
+// periodically. To the user the profiles simply vanish, with no delete having
+// ever been issued.
+//
+// Saves whose destination is itself inside the temp area are left alone: that
+// is a properly sandboxed test, not a leak.
+func validateConfigPaths(cfg *Config, configPath string) error {
 	gitCmd := cfg.Advanced.GitCommand
-	if gitCmd == "" || gitCmd == "git" {
-		return nil
-	}
-	// If git_command is an absolute path, verify it exists.
-	if filepath.IsAbs(gitCmd) {
+	if gitCmd != "" && gitCmd != "git" && filepath.IsAbs(gitCmd) {
+		// If git_command is an absolute path, verify it exists.
 		if _, err := os.Stat(gitCmd); err != nil {
 			return fmt.Errorf("refusing to save: git_command %q does not exist", gitCmd)
 		}
 	}
+
+	temps := tempDirCandidates()
+	if isUnderAnyDir(configPath, temps) {
+		return nil
+	}
+
+	for _, dir := range []struct {
+		field string
+		path  string
+	}{
+		{"profiles_dir", cfg.ProfilesDir},
+		{"templates_dir", cfg.TemplatesDir},
+		{"cache_dir", cfg.CacheDir},
+	} {
+		if isUnderAnyDir(dir.path, temps) {
+			return fmt.Errorf(
+				"refusing to save %s: %s points into the temporary directory (%q), "+
+					"which the operating system deletes periodically",
+				configPath, dir.field, dir.path)
+		}
+	}
+
 	return nil
+}
+
+// tempDirCandidates returns the OS temp directory both as reported and with
+// symlinks resolved. On macOS TMPDIR is /var/folders/..., which resolves to
+// /private/var/folders/...; a config may record either spelling, so both are
+// needed for a reliable containment test.
+func tempDirCandidates() []string {
+	dir := os.TempDir()
+	if dir == "" {
+		return nil
+	}
+	dirs := []string{filepath.Clean(dir)}
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		if cleaned := filepath.Clean(resolved); cleaned != dirs[0] {
+			dirs = append(dirs, cleaned)
+		}
+	}
+	return dirs
+}
+
+// isUnderAnyDir reports whether path lies inside any of dirs.
+func isUnderAnyDir(path string, dirs []string) bool {
+	if path == "" {
+		return false
+	}
+	// The path may no longer exist (a purged temp dir is exactly the case we
+	// care about), so fall back to lexical resolution when EvalSymlinks fails.
+	resolved := path
+	if r, err := filepath.EvalSymlinks(path); err == nil {
+		resolved = r
+	} else if abs, err := filepath.Abs(path); err == nil {
+		resolved = abs
+	}
+	resolved = filepath.Clean(resolved)
+
+	for _, dir := range dirs {
+		rel, err := filepath.Rel(dir, resolved)
+		if err != nil {
+			continue
+		}
+		if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
 }
 
 // EnsureDirs creates all required GCM directories.

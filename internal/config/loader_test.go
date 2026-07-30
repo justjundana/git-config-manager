@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	_testutil "github.com/justjundana/git-config-manager/internal/testutil"
 )
 
 type fakeTempFile struct {
@@ -181,12 +183,23 @@ func TestValidateConfigPaths_AbsoluteGitCommand_NotExist(t *testing.T) {
 	}
 }
 
+// persistentDirsConfig returns a Config whose data directories live outside
+// the OS temp area, so tests can exercise one validateConfigPaths concern
+// without tripping the temp-directory guard.
+func persistentDirsConfig() *Config {
+	cfg := DefaultConfig()
+	cfg.ProfilesDir = "/opt/gcm/profiles"
+	cfg.TemplatesDir = "/opt/gcm/templates"
+	cfg.CacheDir = "/opt/gcm/cache"
+	return cfg
+}
+
 func TestValidateConfigPaths_AbsoluteGitCommand_Exists(t *testing.T) {
 	tmp := t.TempDir()
 	fakeGit := filepath.Join(tmp, "git")
 	os.WriteFile(fakeGit, []byte("#!/bin/sh\n"), 0755)
 
-	cfg := DefaultConfig()
+	cfg := persistentDirsConfig()
 	cfg.Advanced.GitCommand = fakeGit
 
 	err := validateConfigPaths(cfg, "/some/config.yaml")
@@ -196,12 +209,55 @@ func TestValidateConfigPaths_AbsoluteGitCommand_Exists(t *testing.T) {
 }
 
 func TestValidateConfigPaths_RelativeGitCommand(t *testing.T) {
-	cfg := DefaultConfig()
+	cfg := persistentDirsConfig()
 	cfg.Advanced.GitCommand = "custom-git"
 
 	err := validateConfigPaths(cfg, "/some/config.yaml")
 	if err != nil {
 		t.Fatalf("unexpected error for relative git command: %v", err)
+	}
+}
+
+// A Config carrying temp-directory data paths must never be written to the
+// user's real config file: doing so relocates their profiles into a directory
+// the OS purges, which is how profiles silently disappear.
+func TestValidateConfigPaths_RejectsTempDataDirs(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		apply func(*Config, string)
+		field string
+	}{
+		{"profiles", func(c *Config, d string) { c.ProfilesDir = d }, "profiles_dir"},
+		{"templates", func(c *Config, d string) { c.TemplatesDir = d }, "templates_dir"},
+		{"cache", func(c *Config, d string) { c.CacheDir = d }, "cache_dir"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := persistentDirsConfig()
+			tc.apply(cfg, filepath.Join(t.TempDir(), "leaked"))
+
+			err := validateConfigPaths(cfg, "/home/real-user/.gcm/config.yaml")
+			if err == nil {
+				t.Fatalf("expected %s pointing into temp to be rejected", tc.field)
+			}
+			if !strings.Contains(err.Error(), tc.field) {
+				t.Errorf("error should name %s, got: %v", tc.field, err)
+			}
+		})
+	}
+}
+
+// A sandboxed test writes its config inside the temp area too; that is not a
+// leak and must keep working.
+func TestValidateConfigPaths_AllowsTempWhenConfigIsAlsoTemp(t *testing.T) {
+	sandbox := t.TempDir()
+
+	cfg := DefaultConfig()
+	cfg.ProfilesDir = filepath.Join(sandbox, "profiles")
+	cfg.TemplatesDir = filepath.Join(sandbox, "templates")
+	cfg.CacheDir = filepath.Join(sandbox, "cache")
+
+	if err := validateConfigPaths(cfg, filepath.Join(sandbox, "config.yaml")); err != nil {
+		t.Fatalf("sandboxed config should be allowed: %v", err)
 	}
 }
 
@@ -840,4 +896,12 @@ func TestEnsureDirs_ChmodError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when tokens dir is blocked by a file")
 	}
+}
+
+// TestMain sandboxes the whole test binary before any test in this package
+// runs: HOME, the three git config scopes, the OS keychain, the ssh-agent and
+// the GPG keyring are redirected to a throwaway directory. Without it these
+// tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
 }
