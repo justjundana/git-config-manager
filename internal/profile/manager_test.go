@@ -623,6 +623,55 @@ func TestEnsureStore_NotADirectory(t *testing.T) {
 	}
 }
 
+// Clearing default_profile only in memory left config.yaml naming a profile
+// that no longer exists, so the next process start resolved a broken default.
+func TestManagerDelete_PersistsClearedDefaultProfile(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	defer _config.SetConfigPathForTesting(configPath)()
+
+	mgr.Create(validProfile("mydefault"))
+	cfg.DefaultProfile = "mydefault"
+
+	if err := mgr.Delete("mydefault", true); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if cfg.DefaultProfile != "" {
+		t.Errorf("in-memory DefaultProfile = %q, want empty", cfg.DefaultProfile)
+	}
+
+	written, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("config was not written: %v", err)
+	}
+	if strings.Contains(string(written), "default_profile: mydefault") {
+		t.Errorf("config still names the deleted profile:\n%s", written)
+	}
+}
+
+func TestManagerDelete_ReportsFailureToPersistClearedDefault(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+
+	orig := configSaveFn
+	configSaveFn = func(*_config.Config) error { return errors.New("disk full") }
+	t.Cleanup(func() { configSaveFn = orig })
+
+	mgr.Create(validProfile("mydefault"))
+	cfg.DefaultProfile = "mydefault"
+
+	err := mgr.Delete("mydefault", true)
+	if err == nil {
+		t.Fatal("expected the failed config save to be reported")
+	}
+	if !strings.Contains(err.Error(), "default_profile") {
+		t.Errorf("error should explain what was left inconsistent, got: %v", err)
+	}
+	// The profile itself is genuinely gone; the error is about the config.
+	if mgr.Exists("mydefault") {
+		t.Error("profile should still have been deleted")
+	}
+}
+
 func TestListWithUnreadable(t *testing.T) {
 	mgr, cfg := newTestManager(t)
 	mgr.Create(validProfile("good"))

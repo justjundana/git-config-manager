@@ -160,9 +160,15 @@ func (m *Manager) Delete(name string, force ...bool) error {
 		return fmt.Errorf("deleting profile: %w", err)
 	}
 
-	// Clear default profile reference if we just deleted it
+	// Clear the default profile reference if we just deleted it, and persist
+	// that. Clearing it only in memory left config.yaml naming a profile that
+	// no longer exists, so the next process start resolved a default that
+	// cannot be loaded.
 	if m.cfg.DefaultProfile == name {
 		m.cfg.DefaultProfile = ""
+		if err := configSaveFn(m.cfg); err != nil {
+			return fmt.Errorf("profile %q was deleted but clearing default_profile failed: %w", name, err)
+		}
 	}
 
 	m.log.Debug("Profile deleted", _logger.F("profile", name))

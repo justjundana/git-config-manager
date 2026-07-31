@@ -283,7 +283,16 @@ func clearGitCredentialsForOtherProviders(active _provider.Definition) {
 		if def.ID == active.ID || !def.Capabilities.Has(_provider.CapabilityCredentialHelper) {
 			continue
 		}
-		_ = ctr.GitHubClient.ClearGitCredentials(def.CredentialServer())
+		server := def.CredentialServer()
+
+		// Only clear entries GCM itself serves. Git credentials are scoped per
+		// host, so a GitLab entry never affects a GitHub operation — but
+		// "git credential reject" against an externally owned entry deletes a
+		// credential GCM did not create, from whichever helper holds it.
+		if !IsCredentialHelperConfiguredFor(server) {
+			continue
+		}
+		_ = ctr.GitHubClient.ClearGitCredentials(server)
 	}
 }
 
