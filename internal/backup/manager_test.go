@@ -1151,22 +1151,91 @@ func TestRestore_FilePermissionsClamped(t *testing.T) {
 	}
 }
 
-func TestCreate_UnreadableProfileDir(t *testing.T) {
+// A backup that silently contains no profiles is worse than no backup at all:
+// Create reported success and then pruned the older backups that did contain
+// them, destroying the only copies while appearing to protect them.
+func TestCreate_RefusesWhenProfileDirUnreadable(t *testing.T) {
 	m, _ := testManager(t)
 
-	// Write a valid profile
 	os.WriteFile(filepath.Join(m.cfg.ProfilesDir, "good.yaml"), []byte("name: good\n"), 0o600)
-	// Make profiles dir unreadable so os.ReadDir fails
+
+	// An earlier, complete backup that must survive the failed attempt.
+	first, err := m.Create()
+	if err != nil {
+		t.Fatalf("seeding first backup: %v", err)
+	}
+	if first.Profiles != 1 {
+		t.Fatalf("seed backup archived %d profiles, want 1", first.Profiles)
+	}
+
 	os.Chmod(m.cfg.ProfilesDir, 0o000)
 	defer os.Chmod(m.cfg.ProfilesDir, 0o755)
 
+	if _, err := m.Create(); err == nil {
+		t.Fatal("Create must refuse when the profiles directory cannot be read")
+	}
+
+	if _, err := os.Stat(first.Path); err != nil {
+		t.Fatalf("the existing backup must survive a refused Create: %v", err)
+	}
+	backups, err := m.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(backups) != 1 {
+		t.Errorf("expected only the good backup to remain, got %d", len(backups))
+	}
+}
+
+// An existing but empty profiles directory is a legitimate fresh install.
+func TestCreate_AllowsEmptyProfileDir(t *testing.T) {
+	m, _ := testManager(t)
+
 	info, err := m.Create()
 	if err != nil {
-		t.Fatalf("Create: %v", err)
+		t.Fatalf("Create on an empty store: %v", err)
 	}
-	// Profiles should be 0 since dir was unreadable
 	if info.Profiles != 0 {
 		t.Errorf("Profiles = %d, want 0", info.Profiles)
+	}
+}
+
+// Age-based pruning must never remove the last backup, mirroring the keep >= 1
+// floor Prune already enforces.
+func TestPruneOlderThan_KeepsTheNewestBackup(t *testing.T) {
+	m, _ := testManager(t)
+	os.WriteFile(filepath.Join(m.cfg.ProfilesDir, "good.yaml"), []byte("name: good\n"), 0o600)
+
+	first, err := m.Create()
+	if err != nil {
+		t.Fatalf("first Create: %v", err)
+	}
+	second, err := m.Create()
+	if err != nil {
+		t.Fatalf("second Create: %v", err)
+	}
+
+	// A cutoff in the future makes every backup "expired".
+	removed, err := m.PruneOlderThan(time.Now().Add(24 * time.Hour))
+	if err != nil {
+		t.Fatalf("PruneOlderThan: %v", err)
+	}
+	if removed != 1 {
+		t.Errorf("removed = %d, want 1 (the newest is kept)", removed)
+	}
+
+	remaining, err := m.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(remaining) != 1 {
+		t.Fatalf("remaining = %d backups, want 1", len(remaining))
+	}
+	if remaining[0].Path != second.Path {
+		t.Errorf("kept %s, want the newest %s", remaining[0].Path, second.Path)
+	}
+	if _, err := os.Stat(first.Path); !os.IsNotExist(err) {
+		t.Errorf("older backup should have been pruned, stat err = %v", err)
 	}
 }
 
@@ -1704,6 +1773,12 @@ func TestPruneOlderThanRemoveError(t *testing.T) {
 	isolateBackupHooks(t)
 	backupDir := filepath.Join(tmp, ".gcm", "backups")
 	if err := os.MkdirAll(backupDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	// Two backups: the newest is never pruned by age, so the remove failure
+	// has to be exercised on an older one.
+	newPath := filepath.Join(backupDir, "gcm-backup-new.tar.gz")
+	if err := os.WriteFile(newPath, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	oldPath := filepath.Join(backupDir, "gcm-backup-old.tar.gz")

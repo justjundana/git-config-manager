@@ -104,19 +104,28 @@ func (m *Manager) Create() (*BackupInfo, error) {
 		m.log.Debug("No config to backup", _logger.F("error", err))
 	}
 
-	// Backup profiles
+	// Backup profiles.
+	//
+	// An unreadable profiles directory must abort the backup rather than be
+	// swallowed. Otherwise a broken profiles_dir yields an archive with no
+	// profiles in it, Create reports success, and enforceRetention below then
+	// prunes the older backups that did contain them — destroying the only
+	// copies while appearing to protect them. An existing but empty directory
+	// is fine: that is a legitimate fresh install.
 	profilesDir := m.cfg.ProfilesDir
-	if entries, err := os.ReadDir(profilesDir); err == nil {
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
-				src := filepath.Join(profilesDir, entry.Name())
-				dst := filepath.Join("profiles", entry.Name())
-				if err := m.addToArchive(tw, src, dst); err != nil {
-					m.log.Warn("Failed to backup profile", _logger.F("file", entry.Name()))
-					continue
-				}
-				profileCount++
+	entries, err := os.ReadDir(profilesDir)
+	if err != nil {
+		return nil, fmt.Errorf("refusing to create a backup: profiles directory %s cannot be read: %w", profilesDir, err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
+			src := filepath.Join(profilesDir, entry.Name())
+			dst := filepath.Join("profiles", entry.Name())
+			if err := m.addToArchive(tw, src, dst); err != nil {
+				m.log.Warn("Failed to backup profile", _logger.F("file", entry.Name()))
+				continue
 			}
+			profileCount++
 		}
 	}
 
@@ -540,7 +549,14 @@ func (m *Manager) PruneOlderThan(cutoff time.Time) (int, error) {
 	}
 
 	removed := 0
-	for _, backup := range backups {
+	// List is sorted newest first. The most recent backup is never pruned by
+	// age, so a retention window shorter than the gap since the last backup
+	// cannot leave the user with nothing to restore from. Prune(keep) already
+	// enforces the same floor via its keep >= 1 check.
+	for i, backup := range backups {
+		if i == 0 {
+			continue
+		}
 		if !backup.Created.Before(cutoff) {
 			continue
 		}
