@@ -89,18 +89,15 @@ NC='\033[0m'
 # Style effects
 BOLD='\033[1m'
 DIM='\033[2m'
-UNDERLINE='\033[4m'
 
 # Unicode characters for better UI
 CHECKMARK="✓"
 CROSSMARK="✗"
 ARROW="→"
-DOWNLOAD="⬇"
 WARNING="⚠"
 INSTALL="📦"
 INFO="ℹ"
 ROCKET="🚀"
-GEAR="⚙"
 
 # Terminal width detection
 TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
@@ -108,7 +105,7 @@ TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
 # Print separator line
 print_separator() {
     local char="${1:--}"
-    printf "%*s\n" "$TERM_WIDTH" | tr ' ' "$char"
+    printf "%*s\n" "$TERM_WIDTH" "" | tr ' ' "$char"
 }
 
 # Print fancy header
@@ -217,8 +214,10 @@ detect_shell_config() {
 get_restart_instruction() {
     local shell_info
     shell_info=$(detect_shell_config)
-    local shell_name=$(echo "$shell_info" | cut -d':' -f1)
-    local config_file=$(echo "$shell_info" | cut -d':' -f2)
+    local shell_name
+    shell_name=$(echo "$shell_info" | cut -d':' -f1)
+    local config_file
+    config_file=$(echo "$shell_info" | cut -d':' -f2)
 
     if is_windows; then
         echo "Please restart your terminal or PowerShell window"
@@ -461,8 +460,10 @@ download_binary() {
     local platform="$2"
     local install_dir="$3"
 
-    local os=$(echo "$platform" | cut -d'/' -f1)
-    local arch=$(echo "$platform" | cut -d'/' -f2)
+    local os
+    os=$(echo "$platform" | cut -d'/' -f1)
+    local arch
+    arch=$(echo "$platform" | cut -d'/' -f2)
 
     local binary_name="gcm"
     if [[ "$os" == "windows" ]]; then
@@ -578,8 +579,10 @@ configure_path_manually() {
     local install_dir="$1"
     local shell_info
     shell_info=$(detect_shell_config)
-    local shell_name=$(echo "$shell_info" | cut -d':' -f1)
-    local config_file=$(echo "$shell_info" | cut -d':' -f2)
+    local shell_name
+    shell_name=$(echo "$shell_info" | cut -d':' -f1)
+    local config_file
+    config_file=$(echo "$shell_info" | cut -d':' -f2)
 
     local path_line="export PATH=\"${install_dir}:\$PATH\""
     local marker_start="# >>> GCM (Git Config Manager) >>>"
@@ -618,10 +621,13 @@ show_system_info() {
     echo -e "${BOLD}${WHITE}System Information:${NC}"
     print_separator "┄"
 
-    local os=$(echo "$platform" | cut -d'/' -f1)
-    local arch=$(echo "$platform" | cut -d'/' -f2)
+    local os
+    os=$(echo "$platform" | cut -d'/' -f1)
+    local arch
+    arch=$(echo "$platform" | cut -d'/' -f2)
 
-    local os_capitalized=$(echo "$os" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+    local os_capitalized
+    os_capitalized=$(echo "$os" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
 
     echo -e "${GREEN} ${CHECKMARK}${NC} Operating System: ${BOLD}${os_capitalized}${NC}"
     echo -e "${GREEN} ${CHECKMARK}${NC} Architecture: ${BOLD}${arch}${NC}"
@@ -679,9 +685,6 @@ show_completion() {
 check_existing_installation() {
     local install_dir="$HOME/.local/bin"
     local gcm_dir="$HOME/.gcm"
-    local shell_configs_str
-    shell_configs_str=$(get_shell_configs)
-    local shell_configs=($shell_configs_str)
     local binary_found=false
     local binary_valid=false
     local command_found=false
@@ -741,12 +744,14 @@ check_existing_installation() {
         fi
 
         if [[ "$command_found" == true ]]; then
-            local version=$(gcm version 2>/dev/null | head -1 || echo "unknown")
+            local version
+            version=$(gcm version 2>/dev/null | head -1 || echo "unknown")
             echo -e "${GREEN} ${CHECKMARK}${NC} Command available: ${BOLD}gcm${NC} ${DIM}($version)${NC}"
         fi
 
         if [[ -d "$gcm_dir" ]]; then
-            local dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
+            local dir_size
+            dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
             echo -e "${BLUE} ${INFO}${NC} Data directory: ${BOLD}$gcm_dir${NC} ${DIM}($dir_size)${NC}"
         fi
 
@@ -822,7 +827,8 @@ main() {
     # Verify installation
     print_step "Verifying installation..."
     if "$install_dir/gcm" version >/dev/null 2>&1; then
-        local installed_version=$("$install_dir/gcm" version 2>/dev/null | head -1 || echo "unknown")
+        local installed_version
+        installed_version=$("$install_dir/gcm" version 2>/dev/null | head -1 || echo "unknown")
         print_success "Installation verified: ${BOLD}$installed_version${NC}"
 
         local restart_instruction

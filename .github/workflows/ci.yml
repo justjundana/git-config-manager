@@ -104,12 +104,11 @@ jobs:
 
       # The install/uninstall scripts delete keys, rewrite shell rc files and
       # touch the keychain, so a shell bug there costs the user real data.
-      # Gated at error severity: the scripts still carry style warnings
-      # (SC2155/SC2206/SC2183/SC2034) that are tracked separately.
+      # Gated at warning severity now that the scripts are clean at that level.
       - name: shellcheck
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          shellcheck --severity=error --format=gcc scripts/*.sh
+          shellcheck --severity=warning --format=gcc scripts/*.sh
 
   govulncheck:
     name: Vulnerability Check
@@ -144,16 +143,25 @@ jobs:
           bash -n scripts/install.sh
           bash scripts/install.sh --help >/dev/null
 
-      - name: Validate PowerShell installer
+      # Both PowerShell scripts are parsed. uninstall.ps1 deletes SSH/GPG keys
+      # and rewrites git config, so a syntax error there is not cosmetic — it
+      # aborts the script part-way through, after earlier steps have already
+      # changed the machine.
+      - name: Validate PowerShell scripts
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile("scripts/install.ps1", [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List
-            exit 1
+          $failed = $false
+          foreach ($script in @("scripts/install.ps1", "scripts/uninstall.ps1")) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "Parse errors in ${script}:"
+              $errors | Format-List
+              $failed = $true
+            }
           }
+          if ($failed) { exit 1 }
           ./scripts/install.ps1 -Help
 
       - name: Build snapshot release

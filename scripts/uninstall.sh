@@ -36,7 +36,7 @@ TERM_WIDTH=$(tput cols 2>/dev/null || echo 80)
 # Print separator line
 print_separator() {
     local char="${1:--}"
-    printf "%*s\n" "$TERM_WIDTH" | tr ' ' "$char"
+    printf "%*s\n" "$TERM_WIDTH" "" | tr ' ' "$char"
 }
 
 # Print fancy header
@@ -116,7 +116,8 @@ check_gcm_installation() {
     local gcm_dir="$HOME/.gcm"
     local shell_configs_str
     shell_configs_str=$(get_shell_configs)
-    local shell_configs=($shell_configs_str)
+    local shell_configs=()
+    read -r -a shell_configs <<< "$shell_configs_str"
     local binary_found=false
     local config_found=false
     local data_found=false
@@ -184,14 +185,16 @@ check_gcm_installation() {
     fi
 
     if [[ "$command_found" == true ]]; then
-        local version=$(gcm version 2>/dev/null | head -1 || echo "unknown")
+        local version
+        version=$(gcm version 2>/dev/null | head -1 || echo "unknown")
         echo -e "${GREEN} ${CHECKMARK}${NC} Command available: ${BOLD}gcm${NC} ${DIM}($version)${NC}"
     else
         echo -e "${GRAY} ${CROSSMARK}${NC} Command available: ${DIM}gcm (not in PATH)${NC}"
     fi
 
     if [[ "$data_found" == true ]]; then
-        local dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
+        local dir_size
+        dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
         echo -e "${BLUE} ${INFO}${NC} Data directory: ${BOLD}$gcm_dir${NC} ${DIM}($dir_size)${NC}"
     else
         echo -e "${GRAY} ${CROSSMARK}${NC} Data directory: ${DIM}$gcm_dir (not found)${NC}"
@@ -218,7 +221,8 @@ show_removal_preview() {
     local gcm_dir="$HOME/.gcm"
     local shell_configs_str
     shell_configs_str=$(get_shell_configs)
-    local shell_configs=($shell_configs_str)
+    local shell_configs=()
+    read -r -a shell_configs <<< "$shell_configs_str"
 
     # Check binary in all locations
     local bin_found=false
@@ -251,7 +255,8 @@ show_removal_preview() {
 
     # Show data directory based on option
     if [[ -d "$gcm_dir" ]]; then
-        local dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
+        local dir_size
+        dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown")
         if [[ "$option" == "complete" ]]; then
             echo -e "${RED} ${TRASH}${NC} Data directory: ${BOLD}$gcm_dir${NC} ${DIM}($dir_size)${NC}"
         else
@@ -273,7 +278,7 @@ show_removal_progress() {
     local temp
 
     echo -n "   ${DIM}Removing $item... ${NC}"
-    for i in {1..10}; do
+    for _ in {1..10}; do
         temp=${spinstr#?}
         printf "\r   ${DIM}Removing $item... ${CYAN}%c${NC} " "$spinstr"
         spinstr=$temp${spinstr%"$temp"}
@@ -333,7 +338,8 @@ remove_binary() {
 remove_from_path() {
     local shell_configs_str
     shell_configs_str=$(get_shell_configs)
-    local shell_configs=($shell_configs_str)
+    local shell_configs=()
+    read -r -a shell_configs <<< "$shell_configs_str"
     local configs_modified=0
 
     print_step "Cleaning shell configurations..."
@@ -387,7 +393,8 @@ remove_gcm_dir() {
     print_step "Removing GCM data directory..."
 
     if [[ -d "$gcm_dir" ]]; then
-        local dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown size")
+        local dir_size
+        dir_size=$(du -sh "$gcm_dir" 2>/dev/null | cut -f1 || echo "unknown size")
         print_info "Removing directory: $gcm_dir ($dir_size)"
 
         show_removal_progress "data directory"
