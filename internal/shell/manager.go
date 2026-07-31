@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	_file "github.com/justjundana/git-config-manager/internal/service/file"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 )
 
@@ -33,6 +34,7 @@ var (
 	shellRuntimeGOOS       = runtime.GOOS
 	userHomeDirFn          = os.UserHomeDir
 	installAtWriteStringFn = func(f *os.File, s string) (int, error) { return f.WriteString(s) }
+	shellStatFn            = os.Stat
 )
 
 // NewManager creates a new shell manager.
@@ -202,8 +204,27 @@ func (m *Manager) uninstallAt(path string) ([]byte, error) {
 		result = append(result, line)
 	}
 
+	// A modern block that was opened and never closed means the end marker is
+	// gone. Everything from the start marker to EOF would otherwise be dropped
+	// — the user's own aliases and exports along with GCM's lines. Refuse and
+	// let them remove it by hand. A legacy block running to EOF is different:
+	// it is terminated by a blank line *or* the end of the file by design.
+	if inBlock && !usingLegacy {
+		return nil, fmt.Errorf(
+			"refusing to modify %s: found %q with no matching %q — remove the GCM block by hand",
+			path, startMarker, endMarker)
+	}
+
 	out := []byte(strings.Join(result, "\n"))
-	if err := os.WriteFile(path, out, 0o644); err != nil {
+
+	// Preserve the file's own permissions rather than forcing 0644, and write
+	// through the shared atomic helper so an interrupted write cannot leave a
+	// truncated shell rc file behind.
+	perm := os.FileMode(0o644)
+	if info, statErr := shellStatFn(path); statErr == nil {
+		perm = info.Mode().Perm()
+	}
+	if err := _file.NewService().WriteAtomic(path, out, perm); err != nil {
 		return nil, fmt.Errorf("writing %s: %w", path, err)
 	}
 	return out, nil

@@ -599,20 +599,98 @@ func TestInstallAt_FileWriteError(t *testing.T) {
 func TestUninstallAt_WriteBackFails(t *testing.T) {
 	m := newTestManager(t)
 
-	// Create a file with GCM markers but make it read-only so WriteFile fails.
-	dir := t.TempDir()
+	// The write goes through a temp file + rename, so a read-only *file* is no
+	// longer a failure — an unwritable directory is.
+	dir := filepath.Join(t.TempDir(), "locked")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(dir, ".zshrc")
+	content := "export FOO=1\n" + startMarker + "\neval hook\n" + endMarker + "\nalias x=y\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	_, err := m.uninstallAt(path)
+	if err == nil {
+		t.Fatal("expected error when the directory cannot be written")
+	}
+	if !strings.Contains(err.Error(), "writing") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// A read-only rc file is still cleaned: atomic replacement does not need write
+// permission on the file itself, only on its directory.
+func TestUninstallAt_ReadOnlyFileIsStillCleaned(t *testing.T) {
+	m := newTestManager(t)
+
+	path := filepath.Join(t.TempDir(), ".zshrc")
 	content := "export FOO=1\n" + startMarker + "\neval hook\n" + endMarker + "\nalias x=y\n"
 	if err := os.WriteFile(path, []byte(content), 0o444); err != nil {
 		t.Fatal(err)
 	}
 
-	_, err := m.uninstallAt(path)
-	if err == nil {
-		t.Fatal("expected error when file is read-only")
+	out, err := m.uninstallAt(path)
+	if err != nil {
+		t.Fatalf("uninstallAt: %v", err)
 	}
-	if !strings.Contains(err.Error(), "writing") {
-		t.Fatalf("unexpected error: %v", err)
+	if strings.Contains(string(out), startMarker) {
+		t.Error("GCM block should have been removed")
+	}
+	if !strings.Contains(string(out), "alias x=y") {
+		t.Error("content after the block must be preserved")
+	}
+}
+
+// The end marker is gone, so the block "runs to EOF". Dropping everything from
+// the start marker onward would take the user's own lines with it.
+func TestUninstallAt_RefusesWhenEndMarkerMissing(t *testing.T) {
+	m := newTestManager(t)
+
+	path := filepath.Join(t.TempDir(), ".zshrc")
+	content := "export FOO=1\n" + startMarker + "\neval hook\nalias ll='ls -la'\nexport EDITOR=vim\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := m.uninstallAt(path); err == nil {
+		t.Fatal("expected a refusal when the end marker is missing")
+	}
+
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(after) != content {
+		t.Errorf("file must be left untouched, got:\n%s", after)
+	}
+}
+
+// uninstallAt must not silently widen the file's permissions.
+func TestUninstallAt_PreservesFilePermissions(t *testing.T) {
+	m := newTestManager(t)
+
+	path := filepath.Join(t.TempDir(), ".zshrc")
+	content := "export FOO=1\n" + startMarker + "\neval hook\n" + endMarker + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := m.uninstallAt(path); err != nil {
+		t.Fatalf("uninstallAt: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("permissions = %o, want 0600 (unchanged)", perm)
 	}
 }
 
