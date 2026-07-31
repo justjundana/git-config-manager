@@ -8,6 +8,7 @@ import (
 
 	_audit "github.com/justjundana/git-config-manager/internal/audit"
 	_keyledger "github.com/justjundana/git-config-manager/internal/keyledger"
+	_profile "github.com/justjundana/git-config-manager/internal/profile"
 	_file "github.com/justjundana/git-config-manager/internal/service/file"
 	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
@@ -210,10 +211,7 @@ Examples:
 // with no error, which would mark every ledger entry orphaned and delete all
 // GCM-generated keys.
 func referencedSSHKeyPaths() (map[string]struct{}, error) {
-	if err := ctr.ProfileManager.EnsureStore(); err != nil {
-		return nil, err
-	}
-	profiles, err := ctr.ProfileManager.List()
+	profiles, err := completeProfileInventory()
 	if err != nil {
 		return nil, err
 	}
@@ -226,14 +224,33 @@ func referencedSSHKeyPaths() (map[string]struct{}, error) {
 	return referenced, nil
 }
 
+// completeProfileInventory returns every profile, or an error if the inventory
+// cannot be trusted to be complete.
+//
+// Both callers decide what to delete from what is *absent* here, so a partial
+// list is worse than no list: an unreadable store or a single profile with a
+// YAML typo would mark that profile's keys as belonging to nobody.
+func completeProfileInventory() ([]*_profile.Profile, error) {
+	if err := ctr.ProfileManager.EnsureStore(); err != nil {
+		return nil, err
+	}
+	profiles, unreadable, err := ctr.ProfileManager.ListWithUnreadable()
+	if err != nil {
+		return nil, err
+	}
+	if len(unreadable) > 0 {
+		return nil, fmt.Errorf(
+			"refusing to clean: %d profile file(s) could not be read, so their keys cannot be accounted for:\n  %s",
+			len(unreadable), strings.Join(unreadable, "\n  "))
+	}
+	return profiles, nil
+}
+
 // referencedGPGKeyIDs returns the set of GPG key IDs currently referenced by
 // any profile. As with referencedSSHKeyPaths, an unverified store would make
 // every ledger entry look orphaned.
 func referencedGPGKeyIDs() (map[string]struct{}, error) {
-	if err := ctr.ProfileManager.EnsureStore(); err != nil {
-		return nil, err
-	}
-	profiles, err := ctr.ProfileManager.List()
+	profiles, err := completeProfileInventory()
 	if err != nil {
 		return nil, err
 	}

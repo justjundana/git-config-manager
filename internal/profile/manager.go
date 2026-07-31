@@ -169,20 +169,37 @@ func (m *Manager) Delete(name string, force ...bool) error {
 	return nil
 }
 
-// List returns all profiles sorted by name.
+// List returns all profiles sorted by name. Profile files that cannot be read
+// are skipped, so the result is a best-effort view suitable for display.
+// Callers that need to know the view is complete must use ListWithUnreadable.
 func (m *Manager) List() ([]*Profile, error) {
+	profiles, _, err := m.ListWithUnreadable()
+	return profiles, err
+}
+
+// ListWithUnreadable returns all readable profiles sorted by name, plus the
+// paths of profile files that could not be parsed.
+//
+// The distinction matters for anything that reasons about what is *not* in the
+// list. A profile whose YAML has a typo silently vanishes from List, and an
+// inventory built from that list then reports its SSH key and GPG key as
+// referenced by nobody — which is enough for "gcm ssh clean" to delete key
+// material belonging to a profile that still exists.
+func (m *Manager) ListWithUnreadable() ([]*Profile, []string, error) {
 	files, err := m.fileSvc.List(m.cfg.ProfilesDir, "*.yaml")
 	if err != nil {
-		return nil, fmt.Errorf("listing profiles: %w", err)
+		return nil, nil, fmt.Errorf("listing profiles: %w", err)
 	}
 
 	profiles := make([]*Profile, 0, len(files))
+	var unreadable []string
 	for _, f := range files {
 		name := strings.TrimSuffix(filepath.Base(f), ".yaml")
 		p, err := m.Get(name)
 		if err != nil {
 			m.log.Warn("Skipping invalid profile",
 				_logger.F("file", f), _logger.F("error", err))
+			unreadable = append(unreadable, f)
 			continue
 		}
 		profiles = append(profiles, p)
@@ -191,8 +208,9 @@ func (m *Manager) List() ([]*Profile, error) {
 	sort.Slice(profiles, func(i, j int) bool {
 		return profiles[i].Name < profiles[j].Name
 	})
+	sort.Strings(unreadable)
 
-	return profiles, nil
+	return profiles, unreadable, nil
 }
 
 // EnsureStore verifies that the profile store directory exists and is readable.

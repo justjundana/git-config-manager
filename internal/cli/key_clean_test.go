@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_keyledger "github.com/justjundana/git-config-manager/internal/keyledger"
@@ -169,6 +170,43 @@ func TestGPGClean_RefusesWhenProfileStoreIsMissing(t *testing.T) {
 	data, _ := ctr.KeyLedger.Load()
 	if len(data.GPG) != 1 {
 		t.Errorf("ledger should be untouched, got %d entries", len(data.GPG))
+	}
+}
+
+// A profile whose YAML fails to parse disappears from List, so its keys look
+// referenced by nobody. Cleaning must refuse rather than delete key material
+// belonging to a profile that still exists.
+func TestSSHClean_RefusesWhenAProfileCannotBeRead(t *testing.T) {
+	ctr := withRepairTestContainer(t)
+
+	keyPath := filepath.Join(ctr.Config.SSHDir, "id_ed25519_broken")
+	writeFakeSSHKey(t, keyPath)
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "broken", KeyPath: keyPath}); err != nil {
+		t.Fatalf("ledger add: %v", err)
+	}
+
+	// The profile exists on disk and references the key, but does not parse.
+	if err := os.MkdirAll(ctr.Config.ProfilesDir, 0o755); err != nil {
+		t.Fatalf("mkdir profiles: %v", err)
+	}
+	brokenProfile := filepath.Join(ctr.Config.ProfilesDir, "broken.yaml")
+	if err := os.WriteFile(brokenProfile, []byte("ssh:\n  key_path: [unterminated\n"), 0o600); err != nil {
+		t.Fatalf("seed broken profile: %v", err)
+	}
+
+	cmd := newSSHCleanCmd()
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes: %v", err)
+	}
+	err := cmd.RunE(cmd, nil)
+	if err == nil {
+		t.Fatal("ssh clean must refuse while a profile cannot be read")
+	}
+	if !strings.Contains(err.Error(), brokenProfile) {
+		t.Errorf("error should name the unreadable file, got: %v", err)
+	}
+	if _, statErr := os.Stat(keyPath); statErr != nil {
+		t.Fatalf("key must survive the refusal: %v", statErr)
 	}
 }
 

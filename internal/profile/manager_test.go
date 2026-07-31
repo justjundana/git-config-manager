@@ -623,6 +623,47 @@ func TestEnsureStore_NotADirectory(t *testing.T) {
 	}
 }
 
+func TestListWithUnreadable(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	mgr.Create(validProfile("good"))
+	mgr.Create(validProfile("also-good"))
+
+	broken := filepath.Join(cfg.ProfilesDir, "broken.yaml")
+	if err := os.WriteFile(broken, []byte("name: [unterminated\n"), 0o600); err != nil {
+		t.Fatalf("seed broken profile: %v", err)
+	}
+
+	profiles, unreadable, err := mgr.ListWithUnreadable()
+	if err != nil {
+		t.Fatalf("ListWithUnreadable: %v", err)
+	}
+	if len(profiles) != 2 {
+		t.Errorf("readable profiles = %d, want 2", len(profiles))
+	}
+	if len(unreadable) != 1 || unreadable[0] != broken {
+		t.Fatalf("unreadable = %v, want [%s]", unreadable, broken)
+	}
+
+	// List keeps its best-effort contract and hides the problem entirely.
+	listed, err := mgr.List()
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(listed) != 2 {
+		t.Errorf("List = %d profiles, want 2", len(listed))
+	}
+}
+
+func TestListWithUnreadable_PropagatesListingErrors(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	// A glob metacharacter that cannot be parsed makes fileSvc.List fail.
+	cfg.ProfilesDir = filepath.Join(cfg.ProfilesDir, "[")
+
+	if _, _, err := mgr.ListWithUnreadable(); err == nil {
+		t.Fatal("expected a listing error to propagate")
+	}
+}
+
 // The reason EnsureStore exists: List cannot report a missing store, because
 // filepath.Glob returns no matches and no error for one. Callers that delete
 // based on "nothing references this" must not rely on List alone.
