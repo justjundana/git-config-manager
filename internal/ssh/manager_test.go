@@ -2,10 +2,12 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"encoding/pem"
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -2280,4 +2282,50 @@ func TestRemoveFromAgent_ExpandsPath(t *testing.T) {
 // tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
 func TestMain(m *testing.M) {
 	os.Exit(_testutil.RunIsolated(m))
+}
+
+// The success path of AddToAgent cannot be covered by talking to a real
+// ssh-agent: the test sandbox deliberately points SSH_AUTH_SOCK at a dead
+// socket so tests never load keys into the developer's own agent. The command
+// seam mirrors execCommandContext in internal/github.
+func TestAddToAgent_Succeeds(t *testing.T) {
+	m := newTestManager(t)
+
+	origLook, origCmd := sshLookPathFn, sshCommandContextFn
+	t.Cleanup(func() { sshLookPathFn, sshCommandContextFn = origLook, origCmd })
+
+	sshLookPathFn = func(string) (string, error) { return "/usr/bin/ssh-add", nil }
+
+	var gotArgs []string
+	sshCommandContextFn = func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		gotArgs = append([]string{name}, args...)
+		return exec.CommandContext(ctx, "true")
+	}
+
+	if err := m.AddToAgent("/keys/id_ed25519_work"); err != nil {
+		t.Fatalf("AddToAgent: %v", err)
+	}
+	if len(gotArgs) != 2 || gotArgs[0] != "ssh-add" || gotArgs[1] != "/keys/id_ed25519_work" {
+		t.Errorf("invoked %v, want [ssh-add /keys/id_ed25519_work]", gotArgs)
+	}
+}
+
+func TestAddToAgent_ReportsCommandFailure(t *testing.T) {
+	m := newTestManager(t)
+
+	origLook, origCmd := sshLookPathFn, sshCommandContextFn
+	t.Cleanup(func() { sshLookPathFn, sshCommandContextFn = origLook, origCmd })
+
+	sshLookPathFn = func(string) (string, error) { return "/usr/bin/ssh-add", nil }
+	sshCommandContextFn = func(ctx context.Context, _ string, _ ...string) *exec.Cmd {
+		return exec.CommandContext(ctx, "false")
+	}
+
+	err := m.AddToAgent("/keys/id_ed25519_work")
+	if err == nil {
+		t.Fatal("expected an error when ssh-add fails")
+	}
+	if !strings.Contains(err.Error(), "ssh-add failed") {
+		t.Errorf("error = %v, want it to mention ssh-add", err)
+	}
 }

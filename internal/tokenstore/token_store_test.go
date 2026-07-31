@@ -1,6 +1,7 @@
 package tokenstore
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1344,4 +1345,57 @@ func TestIsKeychainAvailable_Unavailable(t *testing.T) {
 // tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
 func TestMain(m *testing.M) {
 	os.Exit(_testutil.RunIsolated(m))
+}
+
+// The kill-switch is enforced inside the guards themselves, so a call site that
+// forgets to stub keyringSet/Get/Delete still cannot reach the OS keychain.
+// The real keyring is never invoked here: keyring*Base is stubbed throughout.
+func TestGuardedKeyring_HonoursKillSwitch(t *testing.T) {
+	origSet, origGet, origDel := keyringSetBase, keyringGetBase, keyringDeleteBase
+	t.Cleanup(func() { keyringSetBase, keyringGetBase, keyringDeleteBase = origSet, origGet, origDel })
+
+	reached := 0
+	keyringSetBase = func(_, _, _ string) error { reached++; return nil }
+	keyringGetBase = func(_, _ string) (string, error) { reached++; return "secret", nil }
+	keyringDeleteBase = func(_, _ string) error { reached++; return nil }
+
+	t.Run("disabled", func(t *testing.T) {
+		t.Setenv("GCM_NO_KEYCHAIN", "1")
+		reached = 0
+
+		if err := guardedKeyringSet("svc", "user", "pw"); !errors.Is(err, errKeychainDisabled) {
+			t.Errorf("Set error = %v, want errKeychainDisabled", err)
+		}
+		if _, err := guardedKeyringGet("svc", "user"); !errors.Is(err, errKeychainDisabled) {
+			t.Errorf("Get error = %v, want errKeychainDisabled", err)
+		}
+		if err := guardedKeyringDelete("svc", "user"); !errors.Is(err, errKeychainDisabled) {
+			t.Errorf("Delete error = %v, want errKeychainDisabled", err)
+		}
+		if reached != 0 {
+			t.Errorf("the real keyring was reached %d time(s) while disabled", reached)
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		t.Setenv("GCM_NO_KEYCHAIN", "")
+		reached = 0
+
+		if err := guardedKeyringSet("svc", "user", "pw"); err != nil {
+			t.Errorf("Set: %v", err)
+		}
+		got, err := guardedKeyringGet("svc", "user")
+		if err != nil {
+			t.Errorf("Get: %v", err)
+		}
+		if got != "secret" {
+			t.Errorf("Get = %q, want %q", got, "secret")
+		}
+		if err := guardedKeyringDelete("svc", "user"); err != nil {
+			t.Errorf("Delete: %v", err)
+		}
+		if reached != 3 {
+			t.Errorf("keyring calls = %d, want 3", reached)
+		}
+	})
 }

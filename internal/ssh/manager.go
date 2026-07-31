@@ -36,6 +36,7 @@ var (
 	sshStatFn                     = os.Stat
 	sshAbsFn                      = filepath.Abs
 	sshLookPathFn                 = exec.LookPath
+	sshCommandContextFn           = exec.CommandContext
 	sshMarshalPrivKeyFn           = func(key interface{}, comment string) (*pem.Block, error) {
 		return ssh.MarshalPrivateKey(key, comment)
 	}
@@ -407,13 +408,13 @@ func (m *Manager) TestConnectionToHost(keyPath, host string, port int) (string, 
 
 // AddToAgent loads an SSH key into the ssh-agent.
 func (m *Manager) AddToAgent(keyPath string) error {
-	if _, err := exec.LookPath("ssh-add"); err != nil {
+	if _, err := sshLookPathFn("ssh-add"); err != nil {
 		return fmt.Errorf("ssh-add not found — SSH agent is not available on this system")
 	}
 	expanded := expandPath(keyPath)
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCommandTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "ssh-add", expanded)
+	cmd := sshCommandContextFn(ctx, "ssh-add", expanded)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("ssh-add failed: %s: %w", strings.TrimSpace(string(out)), err)
 	}

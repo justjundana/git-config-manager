@@ -70,28 +70,42 @@ func keychainDisabled() bool {
 	return os.Getenv("GCM_NO_KEYCHAIN") == "1"
 }
 
-// Keyring function hooks – overridden in tests to avoid OS keychain.
-// Each hook honours keychainDisabled before reaching the real keyring, so the
-// kill-switch holds even for call sites that forget to stub these.
+// Real keyring entry points, kept in their own variables so the guard in front
+// of them can be exercised without any test ever reaching the OS keychain.
 var (
-	keyringSet = func(service, user, password string) error {
-		if keychainDisabled() {
-			return errKeychainDisabled
-		}
-		return keyring.Set(service, user, password)
+	keyringSetBase    = keyring.Set
+	keyringGetBase    = keyring.Get
+	keyringDeleteBase = keyring.Delete
+)
+
+// The guards honour keychainDisabled before reaching the real keyring, so the
+// kill-switch holds even for call sites that forget to stub the hooks below.
+func guardedKeyringSet(service, user, password string) error {
+	if keychainDisabled() {
+		return errKeychainDisabled
 	}
-	keyringGet = func(service, user string) (string, error) {
-		if keychainDisabled() {
-			return "", errKeychainDisabled
-		}
-		return keyring.Get(service, user)
+	return keyringSetBase(service, user, password)
+}
+
+func guardedKeyringGet(service, user string) (string, error) {
+	if keychainDisabled() {
+		return "", errKeychainDisabled
 	}
-	keyringDelete = func(service, user string) error {
-		if keychainDisabled() {
-			return errKeychainDisabled
-		}
-		return keyring.Delete(service, user)
+	return keyringGetBase(service, user)
+}
+
+func guardedKeyringDelete(service, user string) error {
+	if keychainDisabled() {
+		return errKeychainDisabled
 	}
+	return keyringDeleteBase(service, user)
+}
+
+// Keyring function hooks – overridden in tests to avoid the OS keychain.
+var (
+	keyringSet    = guardedKeyringSet
+	keyringGet    = guardedKeyringGet
+	keyringDelete = guardedKeyringDelete
 )
 
 // IsKeychainAvailable performs a non-destructive probe to determine if the
