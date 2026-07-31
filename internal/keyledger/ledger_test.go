@@ -26,6 +26,94 @@ func TestLoad_MissingFileReturnsEmpty(t *testing.T) {
 	}
 }
 
+func TestHasSSH(t *testing.T) {
+	l := newTestLedger(t)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir: %v", err)
+	}
+	generated := filepath.Join(home, ".ssh", "id_ed25519_work")
+	if err := l.AddSSH(SSHEntry{Profile: "work", KeyPath: generated}); err != nil {
+		t.Fatalf("AddSSH: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		path string
+		want bool
+	}{
+		{"exact path", generated, true},
+		{"tilde spelling of the same key", "~/.ssh/id_ed25519_work", true},
+		{"unclean spelling of the same key", filepath.Join(home, ".ssh", "..", ".ssh", "id_ed25519_work"), true},
+		{"surrounding whitespace", "  " + generated + "  ", true},
+		{"a key the user brought themselves", filepath.Join(home, ".ssh", "id_rsa"), false},
+		{"empty path", "", false},
+		{"whitespace only", "   ", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := l.HasSSH(tc.path)
+			if err != nil {
+				t.Fatalf("HasSSH: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("HasSSH(%q) = %v, want %v", tc.path, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasGPG(t *testing.T) {
+	l := newTestLedger(t)
+	if err := l.AddGPG(GPGEntry{Profile: "work", KeyID: "ABCDEF0123456789"}); err != nil {
+		t.Fatalf("AddGPG: %v", err)
+	}
+	if err := l.AddGPG(GPGEntry{Profile: "blank", KeyID: "  "}); err != nil {
+		t.Fatalf("AddGPG blank: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		keyID string
+		want  bool
+	}{
+		{"exact", "ABCDEF0123456789", true},
+		{"lowercase", "abcdef0123456789", true},
+		{"surrounding whitespace", " ABCDEF0123456789 ", true},
+		// Deliberately NOT a match: a suffix match here would authorise
+		// deleting a secret key the user generated themselves.
+		{"short id that is only a suffix", "23456789", false},
+		{"longer fingerprint ending with it", "FFFFABCDEF0123456789", false},
+		{"unknown key", "0000000000000000", false},
+		{"empty", "", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := l.HasGPG(tc.keyID)
+			if err != nil {
+				t.Fatalf("HasGPG: %v", err)
+			}
+			if got != tc.want {
+				t.Errorf("HasGPG(%q) = %v, want %v", tc.keyID, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasSSHAndHasGPG_PropagateLoadErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "generated-keys.json")
+	if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	l := NewWithPath(path)
+
+	if _, err := l.HasSSH("/some/key"); err == nil {
+		t.Error("HasSSH should surface a corrupt ledger")
+	}
+	if _, err := l.HasGPG("ABCDEF"); err == nil {
+		t.Error("HasGPG should surface a corrupt ledger")
+	}
+}
+
 func TestAddSSH_AndLoad(t *testing.T) {
 	l := newTestLedger(t)
 	if err := l.AddSSH(SSHEntry{Profile: "work", KeyPath: "/home/u/.ssh/id_ed25519_work", Fingerprint: "SHA256:abc"}); err != nil {
