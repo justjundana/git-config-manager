@@ -115,11 +115,19 @@ func runStatus() error {
 
 	profiles, _ := ctr.ProfileManager.List()
 	currentName, scope, _ := ctr.ProfileSwitcher.Current()
+
+	// status is a read-only dashboard. It used to run the SSH key rename
+	// migration for every profile, so merely looking at the status renamed key
+	// files on disk and rewrote profile YAML. Detect and report instead —
+	// "gcm repair --fix" already performs the migration.
 	migrationIssues := make([]string, 0)
 	for _, p := range profiles {
-		if _, err := migrateProfileSSHKeyPathToProvider(p.Name, p); err != nil {
-			migrationIssues = append(migrationIssues, fmt.Sprintf("SSH key rename for %q failed: %v", p.Name, err))
+		target, ok := providerSSHKeyMigrationTarget(p.Name, p)
+		if !ok || target == p.SSH.KeyPath {
+			continue
 		}
+		migrationIssues = append(migrationIssues, fmt.Sprintf(
+			"SSH key for %q should be renamed to %s — run: gcm repair --fix", p.Name, target))
 	}
 
 	// Calculate max profile name length for alignment

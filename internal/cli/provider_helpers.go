@@ -594,6 +594,19 @@ func migrateProfileSSHKeyPathToProvider(profileName string, p *_profile.Profile)
 		return false, fmt.Errorf("updating profile after SSH key rename: %w", err)
 	}
 
+	// Carry the generated-keys provenance across to the new path. A stale
+	// entry would make the renamed key look like it was never GCM's, and would
+	// leave the old path marked as GCM-generated — so anything the user later
+	// puts there becomes eligible for deletion by "gcm ssh clean".
+	//
+	// The files and the profile already agree at this point, so a ledger
+	// failure is reported rather than rolled back: "gcm repair --fix" can
+	// reconcile it, whereas undoing the rename would be the larger surprise.
+	if err := ctr.KeyLedger.RenameSSH(currentPriv, targetPriv); err != nil {
+		_ui.Warning("SSH key renamed, but the generated-keys ledger could not be updated: %v", err)
+		_ui.Info("  Run %s to reconcile it", _ui.Cyan("gcm repair --fix"))
+	}
+
 	return true, nil
 }
 

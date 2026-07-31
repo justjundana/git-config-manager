@@ -98,6 +98,88 @@ func TestHasGPG(t *testing.T) {
 	}
 }
 
+func TestRenameSSH(t *testing.T) {
+	l := newTestLedger(t)
+	old := "/keys/id_ed25519_work"
+	fresh := "/keys/id_ed25519_work_github"
+	if err := l.AddSSH(SSHEntry{Profile: "work", KeyPath: old, Fingerprint: "SHA256:abc"}); err != nil {
+		t.Fatalf("AddSSH: %v", err)
+	}
+	if err := l.AddSSH(SSHEntry{Profile: "other", KeyPath: "/keys/id_ed25519_other"}); err != nil {
+		t.Fatalf("AddSSH other: %v", err)
+	}
+
+	if err := l.RenameSSH(old, fresh); err != nil {
+		t.Fatalf("RenameSSH: %v", err)
+	}
+
+	moved, err := l.HasSSH(fresh)
+	if err != nil {
+		t.Fatalf("HasSSH: %v", err)
+	}
+	if !moved {
+		t.Error("renamed key should be recorded at the new path")
+	}
+	stale, err := l.HasSSH(old)
+	if err != nil {
+		t.Fatalf("HasSSH old: %v", err)
+	}
+	if stale {
+		t.Error("old path must no longer be recorded as GCM-generated")
+	}
+
+	d, err := l.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(d.SSH) != 2 {
+		t.Fatalf("entry count = %d, want 2", len(d.SSH))
+	}
+	for _, e := range d.SSH {
+		if e.KeyPath == fresh {
+			if e.Profile != "work" || e.Fingerprint != "SHA256:abc" {
+				t.Errorf("rename lost metadata: %+v", e)
+			}
+		}
+	}
+}
+
+func TestRenameSSH_NoMatchingEntryIsANoOp(t *testing.T) {
+	l := newTestLedger(t)
+	if err := l.AddSSH(SSHEntry{Profile: "work", KeyPath: "/keys/a"}); err != nil {
+		t.Fatalf("AddSSH: %v", err)
+	}
+
+	if err := l.RenameSSH("/keys/does-not-exist", "/keys/b"); err != nil {
+		t.Fatalf("RenameSSH: %v", err)
+	}
+
+	d, _ := l.Load()
+	if len(d.SSH) != 1 || d.SSH[0].KeyPath != "/keys/a" {
+		t.Errorf("ledger should be untouched, got %+v", d.SSH)
+	}
+}
+
+func TestRenameSSH_IgnoresEmptyPaths(t *testing.T) {
+	l := newTestLedger(t)
+	if err := l.RenameSSH("", "/keys/b"); err != nil {
+		t.Errorf("RenameSSH with empty old path: %v", err)
+	}
+	if err := l.RenameSSH("/keys/a", "  "); err != nil {
+		t.Errorf("RenameSSH with blank new path: %v", err)
+	}
+}
+
+func TestRenameSSH_PropagatesLoadError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "generated-keys.json")
+	if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := NewWithPath(path).RenameSSH("/a", "/b"); err == nil {
+		t.Error("RenameSSH should surface a corrupt ledger")
+	}
+}
+
 func TestHasSSHAndHasGPG_PropagateLoadErrors(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "generated-keys.json")
