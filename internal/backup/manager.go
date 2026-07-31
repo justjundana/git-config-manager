@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -120,7 +121,10 @@ func (m *Manager) Create() (*BackupInfo, error) {
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
 			src := filepath.Join(profilesDir, entry.Name())
-			dst := filepath.Join("profiles", entry.Name())
+			// Tar entry names always use forward slashes. filepath.Join would
+			// emit "profiles\\name" on Windows, which extractArchive rejects —
+			// making a Windows-created backup impossible to restore anywhere.
+			dst := path.Join(profilesArchiveDir, entry.Name())
 			if err := m.addToArchive(tw, src, dst); err != nil {
 				m.log.Warn("Failed to backup profile", _logger.F("file", entry.Name()))
 				continue
@@ -135,7 +139,7 @@ func (m *Manager) Create() (*BackupInfo, error) {
 		for _, entry := range entries {
 			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".yaml") {
 				src := filepath.Join(templatesDir, entry.Name())
-				dst := filepath.Join("templates", entry.Name())
+				dst := path.Join(templatesArchiveDir, entry.Name())
 				if err := m.addToArchive(tw, src, dst); err != nil {
 					m.log.Warn("Failed to backup template", _logger.F("file", entry.Name()))
 					continue

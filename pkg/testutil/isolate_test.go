@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -81,8 +82,10 @@ func TestSeedHome_CreatesGitAndGpgLayout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat .gitconfig: %v", err)
 	}
-	if perm := fi.Mode().Perm(); perm != 0o600 {
-		t.Errorf(".gitconfig perm = %o, want 0600", perm)
+	if runtime.GOOS != "windows" {
+		if perm := fi.Mode().Perm(); perm != 0o600 {
+			t.Errorf(".gitconfig perm = %o, want 0600", perm)
+		}
 	}
 
 	// gpg refuses to run when GNUPGHOME has loose permissions.
@@ -93,8 +96,10 @@ func TestSeedHome_CreatesGitAndGpgLayout(t *testing.T) {
 	if !fi.IsDir() {
 		t.Error(".gnupg should be a directory")
 	}
-	if perm := fi.Mode().Perm(); perm != 0o700 {
-		t.Errorf(".gnupg perm = %o, want 0700", perm)
+	if runtime.GOOS != "windows" {
+		if perm := fi.Mode().Perm(); perm != 0o700 {
+			t.Errorf(".gnupg perm = %o, want 0700", perm)
+		}
 	}
 
 	if _, err := os.Stat(filepath.Join(home, ".config")); err != nil {

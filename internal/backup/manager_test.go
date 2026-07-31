@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -1155,6 +1156,9 @@ func TestRestore_FilePermissionsClamped(t *testing.T) {
 // Create reported success and then pruned the older backups that did contain
 // them, destroying the only copies while appearing to protect them.
 func TestCreate_RefusesWhenProfileDirUnreadable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0000 does not make a directory unreadable on Windows")
+	}
 	m, _ := testManager(t)
 
 	os.WriteFile(filepath.Join(m.cfg.ProfilesDir, "good.yaml"), []byte("name: good\n"), 0o600)

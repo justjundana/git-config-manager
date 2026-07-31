@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -597,6 +598,9 @@ func TestInstallAt_FileWriteError(t *testing.T) {
 }
 
 func TestUninstallAt_WriteBackFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permissions do not block writes on Windows")
+	}
 	m := newTestManager(t)
 
 	// The write goes through a temp file + rename, so a read-only *file* is no
@@ -673,6 +677,9 @@ func TestUninstallAt_RefusesWhenEndMarkerMissing(t *testing.T) {
 
 // uninstallAt must not silently widen the file's permissions.
 func TestUninstallAt_PreservesFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions do not apply on Windows")
+	}
 	m := newTestManager(t)
 
 	path := filepath.Join(t.TempDir(), ".zshrc")

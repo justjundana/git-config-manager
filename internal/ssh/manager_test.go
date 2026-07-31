@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -2299,7 +2300,7 @@ func TestAddToAgent_Succeeds(t *testing.T) {
 	var gotArgs []string
 	sshCommandContextFn = func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		gotArgs = append([]string{name}, args...)
-		return exec.CommandContext(ctx, "true")
+		return portableCmd(ctx, true)
 	}
 
 	if err := m.AddToAgent("/keys/id_ed25519_work"); err != nil {
@@ -2318,7 +2319,7 @@ func TestAddToAgent_ReportsCommandFailure(t *testing.T) {
 
 	sshLookPathFn = func(string) (string, error) { return "/usr/bin/ssh-add", nil }
 	sshCommandContextFn = func(ctx context.Context, _ string, _ ...string) *exec.Cmd {
-		return exec.CommandContext(ctx, "false")
+		return portableCmd(ctx, false)
 	}
 
 	err := m.AddToAgent("/keys/id_ed25519_work")
@@ -2328,4 +2329,20 @@ func TestAddToAgent_ReportsCommandFailure(t *testing.T) {
 	if !strings.Contains(err.Error(), "ssh-add failed") {
 		t.Errorf("error = %v, want it to mention ssh-add", err)
 	}
+}
+
+// portableCmd returns a command that exits 0 or 1 on every supported OS.
+// "true"/"false" are Unix binaries and do not exist on Windows.
+func portableCmd(ctx context.Context, succeed bool) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		code := "0"
+		if !succeed {
+			code = "1"
+		}
+		return exec.CommandContext(ctx, "cmd", "/c", "exit "+code)
+	}
+	if succeed {
+		return exec.CommandContext(ctx, "true")
+	}
+	return exec.CommandContext(ctx, "false")
 }
