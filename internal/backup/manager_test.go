@@ -19,7 +19,7 @@ import (
 func testManager(t *testing.T) (*Manager, string) {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = filepath.Join(tmp, ".gcm", "profiles")
@@ -249,7 +249,7 @@ func TestListEmpty(t *testing.T) {
 // reports success while the profiles stay missing.
 func TestRestoreRoundTrip_HonoursCustomProfilesAndTemplatesDirs(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	// Both directories deliberately live outside ~/.gcm.
 	cfg := _config.DefaultConfig()
@@ -1095,7 +1095,7 @@ func TestPrune_RemovesOldest(t *testing.T) {
 
 func TestList_NonExistentBackupDir(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -2270,7 +2270,7 @@ func TestRestore_DirectoryEntryV2(t *testing.T) {
 
 func TestRestore_RejectsOversizedFile(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)

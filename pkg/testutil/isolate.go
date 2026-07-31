@@ -29,6 +29,8 @@ var (
 	writeFileFn = os.WriteFile
 	mkdirTempFn = os.MkdirTemp
 	setenvFn    = os.Setenv
+	getwdFn     = os.Getwd
+	chdirFn     = os.Chdir
 	// Method expression rather than a wrapper closure: same signature, and no
 	// function body that only ever runs when a sandbox genuinely fails.
 	fatalFn           = (*testing.T).Fatalf
@@ -109,6 +111,55 @@ func Isolate(t *testing.T) string {
 		fatalFn(t, "testutil.Isolate: %v", err)
 	}
 	return home
+}
+
+// SetHome points the current test's home directory at dir on every platform.
+//
+// os.UserHomeDir reads $HOME on Unix but %USERPROFILE% on Windows, so setting
+// HOME alone leaves Windows resolving against the real profile directory — or,
+// under RunIsolated, against the shared process sandbox that other tests in the
+// package have already written to. That difference does not fail on macOS or
+// Linux, which is exactly why it went unnoticed until the suite ran on Windows.
+func SetHome(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
+}
+
+// WorkDir moves the test into a throwaway working directory and restores the
+// previous one when it finishes.
+//
+// The environment overrides above cannot protect the repository-local git
+// scope: "git config --local" resolves the repository from the current working
+// directory, so a test that activates a profile while the process sits inside
+// the GCM checkout writes into that checkout's own .git/config — and drops a
+// .git/gcm-session marker beside it. Neither GIT_CONFIG_GLOBAL nor HOME has any
+// bearing on that.
+//
+// Use it in any test that exercises code resolving a repository from the
+// working directory.
+func WorkDir(t *testing.T) string {
+	t.Helper()
+
+	previous, err := getwdFn()
+	if err != nil {
+		fatalFn(t, "testutil.WorkDir: reading working directory: %v", err)
+		return ""
+	}
+	dir := t.TempDir()
+	if err := chdirFn(dir); err != nil {
+		fatalFn(t, "testutil.WorkDir: entering %s: %v", dir, err)
+		return ""
+	}
+	t.Cleanup(func() { _ = os.Chdir(previous) })
+
+	// t.TempDir may hand back a symlinked path (/var vs /private/var on macOS);
+	// report what the process actually sees so comparisons line up.
+	resolved, err := getwdFn()
+	if err != nil {
+		return dir
+	}
+	return resolved
 }
 
 // RunIsolated applies the same redirection to the whole test binary and then

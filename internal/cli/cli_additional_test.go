@@ -25,6 +25,8 @@ import (
 	_ui "github.com/justjundana/git-config-manager/pkg/ui"
 
 	cobra "github.com/spf13/cobra"
+
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func runRootCommand(t *testing.T, args ...string) error {
@@ -828,6 +830,12 @@ func TestInteractiveProfileAndTemplateFlows(t *testing.T) {
 }
 
 func TestSetupSkipFlowAndProviderAuthenticationBranches(t *testing.T) {
+	// runSetup activates the profile it creates, and activation writes
+	// git config --local plus a .git/gcm-session marker into whichever
+	// repository the working directory belongs to. Without this the test
+	// wrote "Setup User" into the GCM checkout's own .git/config.
+	_testutil.WorkDir(t)
+
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
@@ -886,7 +894,7 @@ func TestInitAndCredentialRegistrationRunPaths(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 
@@ -908,7 +916,7 @@ func TestInitDoesNotClearGlobalIdentityWithoutExplicitFlag(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 	setGlobalGitConfig(t, "user.name", "Existing User")
@@ -932,7 +940,7 @@ func TestInitClearsGlobalIdentityWithExplicitFlag(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 	setGlobalGitConfig(t, "user.name", "Existing User")
@@ -956,7 +964,7 @@ func TestSetupDoesNotClearGlobalIdentityBeforeFirstPrompt(t *testing.T) {
 	original := ctr
 	t.Cleanup(func() { ctr = original })
 	ctr = newRepairTestContainer(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(t.TempDir(), "gitconfig"))
 	setGlobalGitConfig(t, "user.name", "Existing User")

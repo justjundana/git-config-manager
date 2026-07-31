@@ -21,7 +21,7 @@ import (
 func newPlainStore(t *testing.T) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
@@ -33,7 +33,7 @@ func newPlainStore(t *testing.T) *TokenStore {
 func newEncryptedStore(t *testing.T, password string) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
@@ -68,7 +68,7 @@ func TestTokenStore_Plain_SaveLoadDelete(t *testing.T) {
 
 func TestTokenStore_Plain_DisabledWithoutExplicitOptIn(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
@@ -86,7 +86,7 @@ func TestTokenStore_Plain_DisabledWithoutExplicitOptIn(t *testing.T) {
 
 func TestTokenStore_PlainBackendRejectsDirectUseWhenDisabled(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = false
@@ -154,7 +154,7 @@ func TestTokenStore_Encrypted_WrongPassword(t *testing.T) {
 
 func TestTokenStore_Encrypted_NoPrompt(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
@@ -170,7 +170,7 @@ func TestTokenStore_Encrypted_NoPrompt(t *testing.T) {
 
 func TestTokenStore_Encrypted_EmptyPassword(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
@@ -209,7 +209,7 @@ func TestTokenStore_BackendSelection_Keychain(t *testing.T) {
 		t.Skip("skipping keychain test (set GCM_TEST_KEYCHAIN=1 to run)")
 	}
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = true
 	cfg.Security.EncryptTokens = true
@@ -228,7 +228,7 @@ func TestTokenStore_BackendSelection_Keychain(t *testing.T) {
 
 func TestTokenStore_SetPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
@@ -333,7 +333,7 @@ func TestTokenStore_SanitizeTokenPath_DotDot(t *testing.T) {
 
 func TestTokenStore_SanitizeTokenPath_Valid(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	path, err := sanitizeTokenPath("myprofile")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -460,7 +460,7 @@ func TestTokenStore_Load_PathTraversal(t *testing.T) {
 
 func TestTokenStore_Encrypted_PromptReturnsError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.UseKeychain = false
 	cfg.Security.EncryptTokens = true
@@ -572,7 +572,7 @@ func containsStr(s, sub string) bool {
 
 func TestTokenStore_WriteTokenFile_UnwritableDir(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{EncryptTokens: false, AllowPlaintextTokens: true},
@@ -594,7 +594,7 @@ func TestTokenStore_WriteTokenFile_UnwritableDir(t *testing.T) {
 
 func TestTokenStore_Encrypted_CorruptPayloadTooShort(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{
@@ -619,7 +619,7 @@ func TestTokenStore_Encrypted_CorruptPayloadTooShort(t *testing.T) {
 
 func TestTokenStore_Encrypted_CorruptSaltLenTooBig(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{
@@ -645,7 +645,7 @@ func TestTokenStore_Encrypted_CorruptSaltLenTooBig(t *testing.T) {
 
 func TestTokenStore_Encrypted_SaveNoPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{
@@ -663,7 +663,7 @@ func TestTokenStore_Encrypted_SaveNoPromptFunc(t *testing.T) {
 
 func TestTokenStore_Encrypted_LoadNoPromptFunc(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{
@@ -741,7 +741,7 @@ func withMockKeyring(store map[string]string, fn func()) {
 func newKeychainStore(t *testing.T) *TokenStore {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{UseKeychain: true},
 	}
@@ -889,7 +889,7 @@ func TestSanitizeTokenPath_DotDotInName(t *testing.T) {
 }
 
 func TestSanitizeTokenPath_ValidName(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	path, err := sanitizeTokenPath("valid-profile")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -928,7 +928,7 @@ func TestTokenStore_Encrypted_V1BackwardCompat(t *testing.T) {
 	// Simulate a v1 (PBKDF2) encrypted token file written by an older version
 	// and verify the new code can still decrypt it.
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	password := "myOldPassword"
 	token := "ghp_legacy_v1_token"
@@ -1113,7 +1113,7 @@ func TestSanitizeTokenPath_FilepathRelError(t *testing.T) {
 	defer func() { filepathRel = old }()
 	filepathRel = func(_, _ string) (string, error) { return "", fmt.Errorf("rel error") }
 
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	_, err := sanitizeTokenPath("validname")
 	if err == nil {
 		t.Fatal("expected error from filepath.Rel")
@@ -1132,7 +1132,7 @@ func TestTokenStore_Keychain_SaveFallbackToEncrypted(t *testing.T) {
 	keyringSet = func(_, _, _ string) error { return fmt.Errorf("keychain locked") }
 
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := &_config.Config{
 		Security: _config.SecurityConfig{
 			UseKeychain:    true,
@@ -1173,7 +1173,7 @@ func TestTokenStore_Keychain_LoadFallbackToEncrypted(t *testing.T) {
 	// When keychain read fails, loadKeychain should try loadEncrypted
 	// if EncryptTokens+MasterPassword are set and the file exists.
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	password := "testpass"
 	cfg := &_config.Config{

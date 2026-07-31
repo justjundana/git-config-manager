@@ -230,6 +230,40 @@ func (m *Manager) uninstallAt(path string) ([]byte, error) {
 	return out, nil
 }
 
+// windowsPowerShellProfile resolves the profile path for whichever PowerShell
+// the user actually has installed.
+//
+// Two things make a single hard-coded path wrong. PowerShell 7+ uses
+// Documents\PowerShell, while Windows PowerShell 5.1 — the edition that ships
+// with Windows — uses Documents\WindowsPowerShell. And Documents itself is
+// frequently redirected into OneDrive, in which case neither lives under the
+// home directory directly.
+//
+// An existing directory therefore wins; when none exists we fall back to
+// PowerShell 7 under the non-redirected Documents, which is what a fresh
+// install of the current edition expects.
+func windowsPowerShellProfile(home string) string {
+	const profileName = "Microsoft.PowerShell_profile.ps1"
+
+	documentRoots := []string{
+		filepath.Join(home, "Documents"),
+		filepath.Join(home, "OneDrive", "Documents"),
+	}
+	// PowerShell 7 first: prefer the current edition when both are present.
+	editions := []string{"PowerShell", "WindowsPowerShell"}
+
+	for _, documents := range documentRoots {
+		for _, edition := range editions {
+			dir := filepath.Join(documents, edition)
+			if info, err := shellStatFn(dir); err == nil && info.IsDir() {
+				return filepath.Join(dir, profileName)
+			}
+		}
+	}
+
+	return filepath.Join(documentRoots[0], editions[0], profileName)
+}
+
 // GenerateInitScript returns the shell init script for the given shell.
 func (m *Manager) GenerateInitScript(shell ShellType) string {
 	return m.generateHook(shell)
@@ -382,7 +416,7 @@ func (m *Manager) shellConfigFile(shell ShellType) (string, error) {
 
 	case ShellPowerShell:
 		if shellRuntimeGOOS == "windows" {
-			return filepath.Join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1"), nil
+			return windowsPowerShellProfile(home), nil
 		}
 		return filepath.Join(home, ".config", "powershell", "Microsoft.PowerShell_profile.ps1"), nil
 

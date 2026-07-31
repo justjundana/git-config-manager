@@ -11,12 +11,14 @@ import (
 	_config "github.com/justjundana/git-config-manager/internal/config"
 	_file "github.com/justjundana/git-config-manager/internal/service/file"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
+
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func isolateGitEnv(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, ".gitconfig"))
 	t.Setenv("GIT_CONFIG_SYSTEM", "/dev/null")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
@@ -41,7 +43,7 @@ func newTestSwitcher(t *testing.T) (*Switcher, *Manager, *_config.Config) {
 	dir := t.TempDir()
 
 	// Isolate git environment so no test can touch real config
-	t.Setenv("HOME", dir)
+	_testutil.SetHome(t, dir)
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(dir, ".gitconfig"))
 	t.Setenv("GIT_CONFIG_SYSTEM", "/dev/null")
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
@@ -1322,6 +1324,41 @@ func TestDetectSessionProfile_EmptyEmail(t *testing.T) {
 	result := sw.detectSessionProfile()
 	if result != "" {
 		t.Errorf("expected empty string for empty email, got %q", result)
+	}
+}
+
+// A repository whose user.email matches no profile must resolve to nothing.
+// This was previously covered only by accident: the suite ran inside the GCM
+// checkout, whose .git/config had been polluted with an unmatched email by
+// another test. With that leak closed, the case needs a repository of its own.
+func TestDetectSessionProfile_NoProfileMatchesEmail(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not found")
+	}
+
+	sw, mgr, _ := newTestSwitcher(t)
+	if err := mgr.Create(validProfile("work")); err != nil {
+		t.Fatalf("create profile: %v", err)
+	}
+
+	gitDir := t.TempDir()
+	initCmd := exec.Command("git", "init", gitDir)
+	initCmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null")
+	if err := initCmd.Run(); err != nil {
+		t.Fatalf("git init: %v", err)
+	}
+	isolateChdir(t, gitDir)
+
+	// An address no profile uses.
+	setCmd := exec.Command("git", "config", "--local", "user.email", "nobody@example.invalid")
+	setCmd.Dir = gitDir
+	setCmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null")
+	if err := setCmd.Run(); err != nil {
+		t.Fatalf("git config: %v", err)
+	}
+
+	if got := sw.detectSessionProfile(); got != "" {
+		t.Errorf("detectSessionProfile() = %q, want empty when no profile matches", got)
 	}
 }
 

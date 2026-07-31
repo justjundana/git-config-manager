@@ -16,6 +16,8 @@ import (
 	_provider "github.com/justjundana/git-config-manager/internal/provider"
 	_logger "github.com/justjundana/git-config-manager/pkg/logger"
 	_ui "github.com/justjundana/git-config-manager/pkg/ui"
+
+	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
 )
 
 func newRepairTestContainer(t *testing.T) *_container.Container {
@@ -24,7 +26,7 @@ func newRepairTestContainer(t *testing.T) *_container.Container {
 	tmp := t.TempDir()
 
 	// Isolate git environment to prevent tests from touching real config
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(tmp, ".gitconfig"))
 	t.Setenv("GIT_CONFIG_SYSTEM", "/dev/null")
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")

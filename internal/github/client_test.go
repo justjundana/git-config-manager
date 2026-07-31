@@ -50,7 +50,7 @@ func newTestTokenStore(cfg *_config.Config) *_tokenstore.TokenStore {
 func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
@@ -64,7 +64,7 @@ func testClient(t *testing.T, handler http.HandlerFunc) *Client {
 
 func TestSaveLoadDeleteToken(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -95,7 +95,7 @@ func TestSaveLoadDeleteToken(t *testing.T) {
 
 func TestLoadToken_InvalidFile(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -114,7 +114,7 @@ func TestLoadToken_InvalidFile(t *testing.T) {
 
 func TestDeleteToken_NonExistent(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -128,7 +128,7 @@ func TestDeleteToken_NonExistent(t *testing.T) {
 
 func TestSetToken(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -296,7 +296,7 @@ func TestApiPost_WithResult(t *testing.T) {
 
 func TestNewClient(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -321,7 +321,7 @@ func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { retu
 
 func TestInitiateDeviceFlow_JSON(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client-id"
@@ -370,7 +370,7 @@ func TestInitiateDeviceFlow_JSON(t *testing.T) {
 
 func TestInitiateDeviceFlow_FormEncoded(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -402,7 +402,7 @@ func TestInitiateDeviceFlow_FormEncoded(t *testing.T) {
 
 func TestPollForToken_ImmediateSuccess(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -434,7 +434,7 @@ func TestPollForToken_ImmediateSuccess(t *testing.T) {
 
 func TestPollForToken_OAuthError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -465,7 +465,7 @@ func TestPollForToken_OAuthError(t *testing.T) {
 
 func TestPollForToken_ContextCancelled(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -493,7 +493,7 @@ func TestPollForToken_ContextCancelled(t *testing.T) {
 
 func TestPollForToken_FormEncoded(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -582,7 +582,7 @@ func TestListSSHKeys_APIError(t *testing.T) {
 
 func TestInitiateDeviceFlow_NetworkError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -601,7 +601,7 @@ func TestInitiateDeviceFlow_NetworkError(t *testing.T) {
 
 func TestPollForToken_SlowDown(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -663,7 +663,7 @@ func TestUploadGPGKey_Error(t *testing.T) {
 
 func TestGetUser_NetworkError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://localhost:1" // invalid port
@@ -914,7 +914,7 @@ func TestListSSHKeys_MultipleKeys(t *testing.T) {
 
 func TestPollForToken_AuthorizationPendingThenSuccess(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -953,7 +953,7 @@ func TestPollForToken_AuthorizationPendingThenSuccess(t *testing.T) {
 
 func TestPollForToken_NetworkErrorRecovery(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -988,7 +988,7 @@ func TestPollForToken_NetworkErrorRecovery(t *testing.T) {
 
 func TestInitiateDeviceFlow_MalformedResponse(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1146,7 +1146,7 @@ func TestUploadGPGKey_VerifiesRequestBody(t *testing.T) {
 
 func TestPollForToken_EmptyTokenAndNoError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1183,7 +1183,7 @@ func TestPollForToken_EmptyTokenAndNoError(t *testing.T) {
 
 func TestPollForToken_ReadBodyError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1229,7 +1229,7 @@ func (e *errorReader) Read(p []byte) (int, error) {
 
 func TestApiGet_NetworkError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://127.0.0.1:1" // closed port
@@ -1248,7 +1248,7 @@ func TestApiGet_NetworkError(t *testing.T) {
 
 func TestApiPost_NetworkError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://127.0.0.1:1" // closed port
@@ -1274,7 +1274,7 @@ func TestInitiateDeviceFlow_BothParsesFail(t *testing.T) {
 	defer srv.Close()
 
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
@@ -1315,7 +1315,7 @@ func TestPollForToken_FormEncodedFallbackV2(t *testing.T) {
 	defer srv.Close()
 
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
@@ -1341,7 +1341,7 @@ func TestPollForToken_FormEncodedFallbackV2(t *testing.T) {
 
 func TestInitiateDeviceFlow_ReadBodyError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1368,7 +1368,7 @@ func TestInitiateDeviceFlow_ReadBodyError(t *testing.T) {
 
 func TestPollForToken_FormEncodedFallbackNoJSON(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1398,7 +1398,7 @@ func TestPollForToken_FormEncodedFallbackNoJSON(t *testing.T) {
 
 func TestPollForToken_Timeout(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1432,7 +1432,7 @@ func TestApiGet_DecodeError(t *testing.T) {
 	defer srv.Close()
 
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = srv.URL
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1449,7 +1449,7 @@ func TestApiGet_DecodeError(t *testing.T) {
 
 func TestApiPost_MarshalError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://localhost"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1681,7 +1681,7 @@ func TestImportFromGHCLI_EmptyToken(t *testing.T) {
 
 func TestInitiateDeviceFlow_Non200Status(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1711,7 +1711,7 @@ func TestInitiateDeviceFlow_Non200Status(t *testing.T) {
 
 func TestInitiateDeviceFlow_LargeBodyTruncation(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1743,7 +1743,7 @@ func TestInitiateDeviceFlow_LargeBodyTruncation(t *testing.T) {
 
 func TestPollForToken_LargeBodyTruncation(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"
@@ -1900,7 +1900,7 @@ func TestSetGitCredentialUsername_UnsetSuccess(t *testing.T) {
 
 func TestApiGet_InvalidURL(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://[::1" // invalid URL
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1917,7 +1917,7 @@ func TestApiGet_InvalidURL(t *testing.T) {
 
 func TestApiPost_InvalidURL(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := plainTextConfig()
 	cfg.GitHub.APIURL = "http://[::1" // invalid URL
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1943,7 +1943,7 @@ func TestPollForToken_InternalTimeout(t *testing.T) {
 	defer func() { pollTimeout = old }()
 
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := plainTextConfig()
 	cfg.GitHub.OAuth.ClientID = "test-client"

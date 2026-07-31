@@ -2260,7 +2260,7 @@ func TestRemoveFromAgent_ExpandsPath(t *testing.T) {
 	script := "#!/bin/sh\necho \"$@\" > " + argsFile + "\nexit 0\n"
 	os.WriteFile(fakeSSHAdd, []byte(script), 0o755)
 	t.Setenv("PATH", binDir)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	err := m.RemoveFromAgent("~/testkey")
 	if err != nil {

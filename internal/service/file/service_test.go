@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_testutil "github.com/justjundana/git-config-manager/pkg/testutil"
@@ -1153,27 +1154,43 @@ func TestWriteAtomic_MkdirAllBlockedByFile(t *testing.T) {
 	}
 }
 
-func TestWriteAtomic_WindowsRemovePath(t *testing.T) {
+// Replacing an existing file must work without removing it first. os.Rename
+// overwrites the target on every supported platform — on Windows via
+// MoveFileEx with MOVEFILE_REPLACE_EXISTING — so the file is never absent at
+// any point during the swap.
+func TestWriteAtomic_ReplacesExistingFileInPlace(t *testing.T) {
 	svc := NewService()
-	dir := t.TempDir()
-	path := filepath.Join(dir, "win.txt")
+	path := filepath.Join(t.TempDir(), "existing.txt")
 
-	// Write initial file
-	os.WriteFile(path, []byte("old"), 0o644)
-
-	// Simulate Windows behavior
-	old := runtimeGOOS
-	runtimeGOOS = "windows"
-	defer func() { runtimeGOOS = old }()
-
-	err := svc.WriteAtomic(path, []byte("new"), 0o644)
-	if err != nil {
-		t.Fatalf("WriteAtomic on simulated windows: %v", err)
+	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
 	}
 
-	got, _ := os.ReadFile(path)
+	// The target must still be present when the rename happens: an
+	// implementation that unlinks it first would leave a window where an
+	// interruption loses the file entirely.
+	origRename := writeAtomicRenameFn
+	targetPresent := false
+	writeAtomicRenameFn = func(from, to string) error {
+		_, statErr := os.Stat(to)
+		targetPresent = statErr == nil
+		return origRename(from, to)
+	}
+	t.Cleanup(func() { writeAtomicRenameFn = origRename })
+
+	if err := svc.WriteAtomic(path, []byte("new"), 0o644); err != nil {
+		t.Fatalf("WriteAtomic: %v", err)
+	}
+	if !targetPresent {
+		t.Error("the target was removed before the rename, so the write was not atomic")
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
 	if string(got) != "new" {
-		t.Errorf("got %q, want %q", got, "new")
+		t.Errorf("content = %q, want %q", got, "new")
 	}
 }
 
@@ -1221,4 +1238,73 @@ func TestCopyFile_IOCopyError(t *testing.T) {
 // tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
 func TestMain(m *testing.M) {
 	os.Exit(_testutil.RunIsolated(m))
+}
+
+// On Windows os.Rename fails with "Access is denied" when the target carries
+// FILE_ATTRIBUTE_READONLY. The first attempt is expected to fail there; the
+// helper clears the attribute and retries rather than unlinking the target up
+// front, which would leave a window with no file at all.
+func TestWriteAtomic_RetriesAfterClearingReadOnlyTarget(t *testing.T) {
+	svc := NewService()
+	path := filepath.Join(t.TempDir(), "readonly.txt")
+	if err := os.WriteFile(path, []byte("old"), 0o444); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	origRename, origChmod := writeAtomicRenameFn, writeAtomicChmodFn
+	t.Cleanup(func() { writeAtomicRenameFn, writeAtomicChmodFn = origRename, origChmod })
+
+	attempts := 0
+	writeAtomicRenameFn = func(from, to string) error {
+		attempts++
+		if attempts == 1 {
+			return fmt.Errorf("Access is denied.") //nolint:staticcheck // mimics the Windows message
+		}
+		return origRename(from, to)
+	}
+	chmodded := ""
+	writeAtomicChmodFn = func(name string, mode os.FileMode) error {
+		chmodded = name
+		return origChmod(name, mode)
+	}
+
+	if err := svc.WriteAtomic(path, []byte("new"), 0o444); err != nil {
+		t.Fatalf("WriteAtomic: %v", err)
+	}
+	if attempts != 2 {
+		t.Errorf("rename attempts = %d, want 2 (one failure then a retry)", attempts)
+	}
+	if chmodded != path {
+		t.Errorf("cleared the read-only attribute on %q, want %q", chmodded, path)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(got) != "new" {
+		t.Errorf("content = %q, want %q", got, "new")
+	}
+}
+
+// When clearing the attribute does not help either, the original rename error
+// is what the caller sees.
+func TestWriteAtomic_ReportsOriginalRenameError(t *testing.T) {
+	svc := NewService()
+	path := filepath.Join(t.TempDir(), "stubborn.txt")
+	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	origRename := writeAtomicRenameFn
+	t.Cleanup(func() { writeAtomicRenameFn = origRename })
+	writeAtomicRenameFn = func(string, string) error { return fmt.Errorf("boom") }
+
+	err := svc.WriteAtomic(path, []byte("new"), 0o644)
+	if err == nil {
+		t.Fatal("expected the rename failure to surface")
+	}
+	if !strings.Contains(err.Error(), "boom") {
+		t.Errorf("error = %v, want the original rename error", err)
+	}
 }

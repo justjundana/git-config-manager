@@ -11,7 +11,7 @@ import (
 
 func TestNew(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
@@ -72,7 +72,7 @@ func TestNew(t *testing.T) {
 
 func TestSetMasterPasswordPrompt(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
@@ -95,7 +95,7 @@ func TestSetMasterPasswordPrompt(t *testing.T) {
 
 func TestNewUsesDefaultGitLabConfigWhenMissing(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"
@@ -116,7 +116,7 @@ func TestNewUsesDefaultGitLabConfigWhenMissing(t *testing.T) {
 
 func TestNewAllowsMissingGitHubProviderDefinition(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.ProfilesDir = tmp + "/profiles"

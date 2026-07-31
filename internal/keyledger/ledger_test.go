@@ -329,7 +329,7 @@ func TestAddSSH_PreservedCreatedAt(t *testing.T) {
 
 func TestNew_UsesGCMDir(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	t.Setenv("USERPROFILE", home) // Windows
 
 	l := New()

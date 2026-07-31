@@ -42,12 +42,30 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: go test -race -coverprofile=coverage.out ./...
 
+      # Packages verified to hold on Windows. Kept blocking.
+      #
+      # -race is omitted throughout: the detector needs a gcc toolchain the
+      # Windows runner does not ship with.
       - name: Run tests (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
           go test -run '^$' ./...
-          go test ./cmd/... ./internal/container/... ./internal/gitlab/... ./internal/provider/... ./internal/providerclient/... ./pkg/...
+          go test ./cmd/... ./internal/container/... ./internal/gitlab/... ./internal/provider/... ./internal/providerclient/... ./internal/shell/... ./pkg/...
+
+      # The rest of the suite has never been executed on Windows, so its true
+      # state is unknown rather than good. Much of it asserts POSIX mode bits
+      # or uses chmod to block access — neither of which means anything on
+      # Windows — so failures here are expected until those tests are made
+      # portable.
+      #
+      # Reported, not enforced: this exists to produce the evidence needed to
+      # fix them, without pretending the platform is already supported.
+      - name: Run tests (Windows, full suite — informational)
+        if: matrix.os == 'windows-latest'
+        continue-on-error: true
+        shell: bash
+        run: go test ./...
 
       - name: Validate Windows installer wrapper
         if: matrix.os == 'windows-latest'

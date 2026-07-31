@@ -32,7 +32,7 @@ func TestEnsureDirs_TightenSensitivePermissions(t *testing.T) {
 
 	// Work inside a temp HOME so we don't touch the user's real ~/.gcm.
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// DefaultConfig reads HOME at call time, so this picks up the override.
 	cfg := DefaultConfig()
@@ -63,7 +63,7 @@ func TestEnsureDirs_TightensExistingDirectories(t *testing.T) {
 	}
 
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Simulate an older install where tokens/ was created world-readable.
 	oldTokens := filepath.Join(home, ".gcm", "tokens")
@@ -91,7 +91,7 @@ func TestEnsureDirs_TightensExistingDirectories(t *testing.T) {
 
 func TestLoad_DefaultsWhenNoFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg, err := Load()
 	if err != nil {
@@ -110,7 +110,7 @@ func TestLoad_DefaultsWhenNoFile(t *testing.T) {
 
 func TestLoad_InvalidYAML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	configDir := filepath.Join(home, ".gcm")
 	os.MkdirAll(configDir, 0o755)
@@ -124,7 +124,7 @@ func TestLoad_InvalidYAML(t *testing.T) {
 
 func TestSave_And_Load(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	cfg.Advanced.GitCommand = "custom-git"
@@ -144,7 +144,7 @@ func TestSave_And_Load(t *testing.T) {
 
 func TestDefaultConfig_Defaults(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if cfg.ProfilesDir == "" {
@@ -263,7 +263,7 @@ func TestValidateConfigPaths_AllowsTempWhenConfigIsAlsoTemp(t *testing.T) {
 
 func TestSave_ValidateConfigPathsRejectsInvalid(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	os.MkdirAll(filepath.Join(home, ".gcm"), 0755)
 
 	cfg := DefaultConfig()
@@ -280,7 +280,7 @@ func TestSave_ValidateConfigPathsRejectsInvalid(t *testing.T) {
 
 func TestConfigPath_Format(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	path := ConfigPath()
 	if !filepath.IsAbs(path) {
@@ -293,7 +293,7 @@ func TestConfigPath_Format(t *testing.T) {
 
 func TestSave_CreatesDirectory(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if err := Save(cfg); err != nil {
@@ -308,7 +308,7 @@ func TestSave_CreatesDirectory(t *testing.T) {
 
 func TestSave_OverwritesExisting(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	cfg.Advanced.GitCommand = "first"
@@ -332,7 +332,7 @@ func TestSave_OverwritesExisting(t *testing.T) {
 
 func TestLoad_ReadableYAMLConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	configDir := filepath.Join(home, ".gcm")
 	os.MkdirAll(configDir, 0o755)
@@ -360,7 +360,7 @@ ui:
 
 func TestEnsureDirs_CreatesAllDirs(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if err := EnsureDirs(cfg); err != nil {
@@ -384,7 +384,7 @@ func TestEnsureDirs_CreatesAllDirs(t *testing.T) {
 
 func TestGCMDir_WithHome(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	dir := GCMDir()
 	if dir != filepath.Join(home, ".gcm") {
@@ -394,7 +394,7 @@ func TestGCMDir_WithHome(t *testing.T) {
 
 func TestDefaultConfig_SecurityDefaults(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if !cfg.Security.EncryptTokens {
@@ -413,7 +413,7 @@ func TestDefaultConfig_SecurityDefaults(t *testing.T) {
 
 func TestDefaultConfig_BackupDefaults(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if cfg.Backup.AutoBackup {
@@ -435,7 +435,7 @@ func TestDefaultConfig_BackupDefaults(t *testing.T) {
 
 func TestDefaultConfig_AdvancedDefaults(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	if cfg.Advanced.GitCommand != "git" {
@@ -454,7 +454,7 @@ func TestSave_UnwritableDir(t *testing.T) {
 		t.Skip("cannot test permission denied as root")
 	}
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Create the .gcm dir as read-only
 	gcmDir := filepath.Join(home, ".gcm")
@@ -474,7 +474,7 @@ func TestLoad_PermissionDenied(t *testing.T) {
 		t.Skip("cannot test permission denied as root")
 	}
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	configDir := filepath.Join(home, ".gcm")
 	os.MkdirAll(configDir, 0o755)
@@ -501,7 +501,7 @@ func TestLoad_MalformedYAMLVariants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
-			t.Setenv("HOME", home)
+			_testutil.SetHome(t, home)
 
 			configDir := filepath.Join(home, ".gcm")
 			os.MkdirAll(configDir, 0o755)
@@ -520,7 +520,7 @@ func TestEnsureDirs_ImpossiblePath(t *testing.T) {
 		t.Skip("cannot test permission denied as root")
 	}
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	// Set a path that can't be created
@@ -534,7 +534,7 @@ func TestEnsureDirs_ImpossiblePath(t *testing.T) {
 
 func TestLoad_PartialYAMLConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	configDir := filepath.Join(home, ".gcm")
 	os.MkdirAll(configDir, 0o755)
@@ -567,7 +567,7 @@ func TestSave_HookErrors(t *testing.T) {
 	}()
 
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	cfg := DefaultConfig()
 
 	t.Run("marshal error", func(t *testing.T) {
@@ -650,7 +650,7 @@ func TestSave_HookErrors(t *testing.T) {
 
 func TestEnsureDirs_ChmodErrorHook(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	cfg := DefaultConfig()
 
 	origChmod := chmodPathFn
@@ -674,7 +674,7 @@ func TestEnsureDirs_PartialFailure(t *testing.T) {
 		t.Skip("cannot test permission denied as root")
 	}
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	// Create a file where a directory is expected so MkdirAll fails
@@ -688,7 +688,7 @@ func TestEnsureDirs_PartialFailure(t *testing.T) {
 
 func TestSave_EmptyConfig(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := &Config{}
 	if err := Save(cfg); err != nil {
@@ -705,7 +705,7 @@ func TestSave_EmptyConfig(t *testing.T) {
 
 func TestGCMDir_Consistent(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	dir1 := GCMDir()
 	dir2 := GCMDir()
@@ -716,7 +716,7 @@ func TestGCMDir_Consistent(t *testing.T) {
 
 func TestConfigPath_ContainsGCMDir(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	path := ConfigPath()
 	gcmDir := GCMDir()
@@ -727,7 +727,7 @@ func TestConfigPath_ContainsGCMDir(t *testing.T) {
 
 func TestSave_UnwritableConfigDir(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Create .gcm as a file to block MkdirAll
 	gcmDir := filepath.Join(home, ".gcm")
@@ -742,7 +742,7 @@ func TestSave_UnwritableConfigDir(t *testing.T) {
 
 func TestEnsureDirs_BlockedByFile(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	cfg := DefaultConfig()
 	// Create a file where tokens dir should be
@@ -757,7 +757,7 @@ func TestEnsureDirs_BlockedByFile(t *testing.T) {
 
 func TestLoad_MalformedYAML(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	configDir := filepath.Join(home, ".gcm")
 	os.MkdirAll(configDir, 0o755)
@@ -771,7 +771,7 @@ func TestLoad_MalformedYAML(t *testing.T) {
 
 func TestSave_WriteFileError(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Create .gcm directory but make config.yaml a directory
 	configDir := filepath.Join(home, ".gcm")
@@ -878,7 +878,7 @@ func TestEnsureDirs_ChmodError(t *testing.T) {
 		t.Skip("cannot test chmod failure as root")
 	}
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := DefaultConfig()
 	// Create tokens dir as a regular file to block MkdirAll
@@ -910,7 +910,7 @@ func TestMain(m *testing.M) {
 // user-editable (and corruptible) config file.
 func TestEnsureRemovable(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	safe := filepath.Join(home, ".gcm", "cache")
 	elsewhere := filepath.Join(t.TempDir(), "relocated-cache")

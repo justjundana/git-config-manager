@@ -17,7 +17,7 @@ import (
 func setupTestLogger(t *testing.T, enabled bool) *Logger {
 	t.Helper()
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = enabled
@@ -28,7 +28,7 @@ func setupTestLogger(t *testing.T, enabled bool) *Logger {
 
 func TestNewLogger(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = true
 	l := NewLogger(cfg)
@@ -125,7 +125,7 @@ func TestLog_ConcurrentWrites(t *testing.T) {
 
 func TestReadLog(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o700)
@@ -154,7 +154,7 @@ func TestReadLog(t *testing.T) {
 
 func TestReadLog_NotFound(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	_, err := ReadLog("2099-01-01")
 	if err == nil {
 		t.Error("expected error for nonexistent log file")
@@ -163,7 +163,7 @@ func TestReadLog_NotFound(t *testing.T) {
 
 func TestReadLog_MalformedLines(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o700)
@@ -285,7 +285,7 @@ func TestWrite_MarshalError(t *testing.T) {
 
 func TestWrite_MkdirAllError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Security.AuditLog = true
@@ -306,7 +306,7 @@ func TestWrite_MkdirAllError(t *testing.T) {
 
 func TestReadLog_EmptyLinesBetweenEntries(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o700)
@@ -326,7 +326,7 @@ func TestReadLog_EmptyLinesBetweenEntries(t *testing.T) {
 
 func TestReadLog_PathTraversal(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	_, err := ReadLog("../etc/passwd")
 	if err == nil {
@@ -336,7 +336,7 @@ func TestReadLog_PathTraversal(t *testing.T) {
 
 func TestReadLog_WithMultipleEntries(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o700)
@@ -365,7 +365,7 @@ func TestReadLog_WithMultipleEntries(t *testing.T) {
 
 func TestReadLog_EmptyFile(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o700)
@@ -458,7 +458,7 @@ func TestReadLog_PathTraversalBackslash(t *testing.T) {
 
 func TestReadLog_NonExistentDate(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	_, err := ReadLog("2099-01-01")
 	if err == nil {
 		t.Fatal("expected error for nonexistent log file")
@@ -467,7 +467,7 @@ func TestReadLog_NonExistentDate(t *testing.T) {
 
 func TestReadLog_CorruptJSON(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	logDir := filepath.Join(tmp, ".gcm", "logs")
 	os.MkdirAll(logDir, 0o755)
 	os.WriteFile(filepath.Join(logDir, "2024-01-01.jsonl"), []byte("not json\n"), 0o600)

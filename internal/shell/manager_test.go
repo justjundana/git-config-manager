@@ -369,7 +369,7 @@ func TestUninstall_PreservesMultipleBlankLinesAroundBlock(t *testing.T) {
 
 func TestInstall_Zsh(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 	t.Setenv("SHELL", "/bin/zsh")
 
 	configFile, err := m.Install(ShellZsh)
@@ -387,7 +387,7 @@ func TestInstall_Zsh(t *testing.T) {
 
 func TestInstall_AlreadyInstalled(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	m.Install(ShellZsh)
 	_, err := m.Install(ShellZsh)
@@ -398,7 +398,7 @@ func TestInstall_AlreadyInstalled(t *testing.T) {
 
 func TestUninstall_Zsh(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	m.Install(ShellZsh)
 	configFile, err := m.Uninstall(ShellZsh)
@@ -413,7 +413,7 @@ func TestUninstall_Zsh(t *testing.T) {
 
 func TestUninstall_NotInstalled(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	// Create empty config file
 	home := os.Getenv("HOME")
@@ -427,7 +427,7 @@ func TestUninstall_NotInstalled(t *testing.T) {
 
 func TestInstall_Bash(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	configFile, err := m.Install(ShellBash)
 	if err != nil {
@@ -441,7 +441,7 @@ func TestInstall_Bash(t *testing.T) {
 
 func TestInstall_Fish(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	configFile, err := m.Install(ShellFish)
 	if err != nil {
@@ -501,7 +501,7 @@ func TestDetectShell_PowerShellViaEnv(t *testing.T) {
 func TestShellConfigFile_BashFallback(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// No .bashrc exists, so it should fall back to .bash_profile
 	path, err := m.shellConfigFile(ShellBash)
@@ -516,7 +516,7 @@ func TestShellConfigFile_BashFallback(t *testing.T) {
 func TestShellConfigFile_BashPrefersBashrc(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Create .bashrc so it's preferred
 	os.WriteFile(filepath.Join(home, ".bashrc"), []byte("# existing\n"), 0o644)
@@ -532,7 +532,7 @@ func TestShellConfigFile_BashPrefersBashrc(t *testing.T) {
 
 func TestInstall_PowerShell(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	configFile, err := m.Install(ShellPowerShell)
 	if err != nil {
@@ -546,7 +546,7 @@ func TestInstall_PowerShell(t *testing.T) {
 
 func TestInstall_UnsupportedShell(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	_, err := m.Install(ShellUnknown)
 	if err == nil {
@@ -556,7 +556,7 @@ func TestInstall_UnsupportedShell(t *testing.T) {
 
 func TestUninstall_UnsupportedShell(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	_, err := m.Uninstall(ShellUnknown)
 	if err == nil {
@@ -578,6 +578,9 @@ func TestInstallAt_MkdirAllError(t *testing.T) {
 }
 
 func TestInstallAt_FileWriteError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a read-only directory does not block file creation on Windows")
+	}
 	m := newTestManager(t)
 	// Create a read-only directory
 	dir := t.TempDir()
@@ -805,7 +808,7 @@ func TestShellConfigFile_PowerShell_Windows(t *testing.T) {
 func TestIsInstalled_True(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Install first
 	_, err := m.Install(ShellZsh)
@@ -825,7 +828,7 @@ func TestIsInstalled_True(t *testing.T) {
 func TestIsInstalled_False(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Create .zshrc without any GCM markers
 	zshrc := filepath.Join(home, ".zshrc")
@@ -843,7 +846,7 @@ func TestIsInstalled_False(t *testing.T) {
 func TestIsInstalled_LegacyMarker(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 
 	// Write a file with the legacy marker
 	zshrc := filepath.Join(home, ".zshrc")
@@ -858,7 +861,7 @@ func TestIsInstalled_LegacyMarker(t *testing.T) {
 
 func TestIsInstalled_UnsupportedShell(t *testing.T) {
 	m := newTestManager(t)
-	t.Setenv("HOME", t.TempDir())
+	_testutil.SetHome(t, t.TempDir())
 
 	installed, configFile := m.IsInstalled(ShellUnknown)
 	if installed {
@@ -872,7 +875,7 @@ func TestIsInstalled_UnsupportedShell(t *testing.T) {
 func TestIsInstalled_FileDoesNotExist(t *testing.T) {
 	m := newTestManager(t)
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	_testutil.SetHome(t, home)
 	// Don't create .zshrc — file doesn't exist
 
 	installed, configFile := m.IsInstalled(ShellZsh)
@@ -891,4 +894,73 @@ func TestIsInstalled_FileDoesNotExist(t *testing.T) {
 // tests rewrite the developer's real ~/.gcm, ~/.gitconfig and login keychain.
 func TestMain(m *testing.M) {
 	os.Exit(_testutil.RunIsolated(m))
+}
+
+// PowerShell 7 uses Documents\PowerShell, Windows PowerShell 5.1 uses
+// Documents\WindowsPowerShell, and Documents is often redirected into OneDrive.
+func TestWindowsPowerShellProfile(t *testing.T) {
+	const profileName = "Microsoft.PowerShell_profile.ps1"
+
+	for _, tc := range []struct {
+		name    string
+		create  []string
+		wantRel []string
+	}{
+		{
+			name:    "nothing installed falls back to PowerShell 7",
+			create:  nil,
+			wantRel: []string{"Documents", "PowerShell", profileName},
+		},
+		{
+			name:    "Windows PowerShell 5.1 only",
+			create:  []string{"Documents/WindowsPowerShell"},
+			wantRel: []string{"Documents", "WindowsPowerShell", profileName},
+		},
+		{
+			name:    "PowerShell 7 only",
+			create:  []string{"Documents/PowerShell"},
+			wantRel: []string{"Documents", "PowerShell", profileName},
+		},
+		{
+			name:    "both installed prefers PowerShell 7",
+			create:  []string{"Documents/WindowsPowerShell", "Documents/PowerShell"},
+			wantRel: []string{"Documents", "PowerShell", profileName},
+		},
+		{
+			name:    "Documents redirected into OneDrive",
+			create:  []string{"OneDrive/Documents/WindowsPowerShell"},
+			wantRel: []string{"OneDrive", "Documents", "WindowsPowerShell", profileName},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			for _, rel := range tc.create {
+				if err := os.MkdirAll(filepath.Join(home, filepath.FromSlash(rel)), 0o755); err != nil {
+					t.Fatalf("seed %s: %v", rel, err)
+				}
+			}
+
+			want := filepath.Join(append([]string{home}, tc.wantRel...)...)
+			if got := windowsPowerShellProfile(home); got != want {
+				t.Errorf("windowsPowerShellProfile() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+// A file where the directory is expected must not be mistaken for a profile dir.
+func TestWindowsPowerShellProfile_IgnoresNonDirectories(t *testing.T) {
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, "Documents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "Documents", "PowerShell"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got := windowsPowerShellProfile(home)
+	want := filepath.Join(home, "Documents", "PowerShell", "Microsoft.PowerShell_profile.ps1")
+	if got != want {
+		t.Errorf("got %q, want the fallback %q", got, want)
+	}
 }

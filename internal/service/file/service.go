@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 // Test hooks for deterministic WriteAtomic error-path tests.
@@ -16,13 +15,13 @@ var (
 	writeAtomicStatFn       = os.Stat
 	writeAtomicRemoveFn     = os.Remove
 	writeAtomicRenameFn     = os.Rename
+	writeAtomicChmodFn      = os.Chmod
 )
 
 // Test hooks for CopyFile error-path tests.
 var (
 	copyStatFn   = func(f *os.File) (os.FileInfo, error) { return f.Stat() }
 	copyIOCopyFn = io.Copy
-	runtimeGOOS  = runtime.GOOS
 )
 
 type atomicTempFile interface {
@@ -103,17 +102,30 @@ func (s *Service) WriteAtomic(path string, data []byte, perm os.FileMode) error 
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 
-	// On Windows, os.Rename fails if the target already exists.
-	// Remove the target first to ensure atomic replacement.
-	if runtimeGOOS == "windows" {
-		_ = os.Remove(path)
+	// The target is replaced by the rename itself rather than being removed
+	// first: unlinking it up front opens a window where an interruption leaves
+	// no file at all, which is the opposite of what this helper is for.
+	//
+	// One case needs help. On Windows os.Rename calls MoveFileEx with
+	// MOVEFILE_REPLACE_EXISTING, and that fails with "Access is denied" when
+	// the target carries FILE_ATTRIBUTE_READONLY. Clearing the attribute and
+	// retrying keeps the atomic path for every other write, instead of
+	// degrading all of them for the sake of this one.
+	err = writeAtomicRenameFn(tmpPath, path)
+	if err == nil {
+		return nil
 	}
-
-	if err := writeAtomicRenameFn(tmpPath, path); err != nil {
-		return fmt.Errorf("renaming temp file: %w", err)
+	// Only a regular file can carry the read-only attribute this works around.
+	// Chmod-ing anything else — a directory, for instance — would strip its
+	// traversal bit while doing nothing for the rename.
+	if info, statErr := writeAtomicStatFn(path); statErr == nil && info.Mode().IsRegular() {
+		if chmodErr := writeAtomicChmodFn(path, 0o600); chmodErr == nil {
+			if retryErr := writeAtomicRenameFn(tmpPath, path); retryErr == nil {
+				return nil
+			}
+		}
 	}
-
-	return nil
+	return fmt.Errorf("renaming temp file: %w", err)
 }
 
 // Exists checks if a file or directory exists.

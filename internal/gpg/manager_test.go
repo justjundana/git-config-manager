@@ -186,7 +186,7 @@ func TestValidateGenerateOptions(t *testing.T) {
 
 func TestNewManager(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -197,7 +197,7 @@ func TestNewManager(t *testing.T) {
 
 func TestIsInstalled(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -207,7 +207,7 @@ func TestIsInstalled(t *testing.T) {
 
 func TestIsInstalled_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -287,7 +287,7 @@ uid:-::::::::Name2 <d@e.f>:
 
 func TestGetVersion_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -301,7 +301,7 @@ func TestGetVersion_FakeCommand(t *testing.T) {
 
 func TestList_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -317,7 +317,7 @@ func TestList_FakeCommand(t *testing.T) {
 
 func TestGetKey_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -330,7 +330,7 @@ func TestGetKey_FakeCommand(t *testing.T) {
 
 func TestGetPublicKey_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -344,7 +344,7 @@ func TestGetPublicKey_FakeCommand(t *testing.T) {
 
 func TestTestSigning_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -358,7 +358,7 @@ func TestTestSigning_FakeCommand(t *testing.T) {
 
 func TestGetVersion_RealGPG(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -378,7 +378,7 @@ func TestGetVersion_RealGPG(t *testing.T) {
 
 func TestList_RealGPG(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -400,7 +400,7 @@ func TestList_RealGPG(t *testing.T) {
 
 func TestGetKey_NotFound_RealGPG(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -554,7 +554,7 @@ func TestManager_WithFakeGPG_SuccessPaths(t *testing.T) {
 	tmp := t.TempDir()
 	writeFakeGPG(t, tmp)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -614,7 +614,7 @@ func TestListKeys_ExitStatus2ReturnsNil(t *testing.T) {
 	tmp := t.TempDir()
 	writeFakeGPG(t, tmp)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -740,7 +740,7 @@ func TestValidateGenerateOptions_MinKeyLength(t *testing.T) {
 
 func TestGenerate_FakeCommand(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -759,7 +759,7 @@ func TestGenerate_FakeCommand(t *testing.T) {
 func TestGenerate_DefaultValues(t *testing.T) {
 	// Verify default values are applied before validation
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -778,7 +778,7 @@ func TestGenerate_DefaultValues(t *testing.T) {
 
 func TestGenerate_CommentInBatch(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -798,7 +798,7 @@ func TestGenerate_CommentInBatch(t *testing.T) {
 
 func TestGenerate_ValidationFailsEmptyName(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -817,7 +817,7 @@ func TestGenerate_ValidationFailsEmptyName(t *testing.T) {
 
 func TestGenerate_ValidationFailsEmptyEmail(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -836,7 +836,7 @@ func TestGenerate_ValidationFailsEmptyEmail(t *testing.T) {
 
 func TestGenerate_ValidationFailsInvalidKeyType(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -856,7 +856,7 @@ func TestGenerate_ValidationFailsInvalidKeyType(t *testing.T) {
 
 func TestGenerate_ValidationFailsInvalidKeyLength(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -877,7 +877,7 @@ func TestGenerate_ValidationFailsInvalidKeyLength(t *testing.T) {
 
 func TestGenerate_ValidationFailsInvalidExpiration(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -899,7 +899,7 @@ func TestGenerate_ValidationFailsInvalidExpiration(t *testing.T) {
 
 func TestGenerate_ValidationFailsUnsafeCharsInName(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -918,7 +918,7 @@ func TestGenerate_ValidationFailsUnsafeCharsInName(t *testing.T) {
 
 func TestGenerate_ValidationFailsEmailNoAt(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -937,7 +937,7 @@ func TestGenerate_ValidationFailsEmailNoAt(t *testing.T) {
 
 func TestGetKey_NotFoundReturnsError(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -958,7 +958,7 @@ func TestGetKey_NotFoundReturnsError(t *testing.T) {
 
 func TestGetPublicKey_EmptyKeyID(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -981,7 +981,7 @@ func TestGetPublicKey_EmptyKeyID(t *testing.T) {
 
 func TestTestSigning_InvalidKeyID(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1002,7 +1002,7 @@ func TestTestSigning_InvalidKeyID(t *testing.T) {
 
 func TestListKeys_EmptyGNUPGHome(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1023,7 +1023,7 @@ func TestListKeys_EmptyGNUPGHome(t *testing.T) {
 
 func TestGetVersion_ContainsGPG(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1047,7 +1047,7 @@ func TestGetVersion_ContainsGPG(t *testing.T) {
 
 func TestGenerate_FakeCommand_BatchFails(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1067,7 +1067,7 @@ func TestGenerate_FakeCommand_BatchFails(t *testing.T) {
 
 func TestGenerate_EmptyName(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1086,7 +1086,7 @@ func TestGenerate_EmptyName(t *testing.T) {
 
 func TestGenerate_EmptyEmail(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1105,7 +1105,7 @@ func TestGenerate_EmptyEmail(t *testing.T) {
 
 func TestGenerate_InvalidKeyType(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1125,7 +1125,7 @@ func TestGenerate_InvalidKeyType(t *testing.T) {
 
 func TestGenerate_InvalidKeyLength(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1146,7 +1146,7 @@ func TestGenerate_InvalidKeyLength(t *testing.T) {
 
 func TestGenerate_InvalidExpiration(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1168,7 +1168,7 @@ func TestGenerate_InvalidExpiration(t *testing.T) {
 
 func TestGenerate_UnsafeName(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1187,7 +1187,7 @@ func TestGenerate_UnsafeName(t *testing.T) {
 
 func TestGenerate_EmailWithoutAt(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
 	m := NewManager(cfg, log)
@@ -1206,7 +1206,7 @@ func TestGenerate_EmailWithoutAt(t *testing.T) {
 
 func TestGenerate_WithComment(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1229,7 +1229,7 @@ func TestGenerate_WithComment(t *testing.T) {
 
 func TestGenerate_DefaultValuesApplied(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1257,7 +1257,7 @@ func TestGenerate_DefaultValuesApplied(t *testing.T) {
 
 func TestGetKey_NotFoundWithEmptyList(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", t.TempDir())
 	cfg := _config.DefaultConfig()
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1279,7 +1279,7 @@ func TestGetKey_NotFoundWithEmptyList(t *testing.T) {
 func TestGetKey_MatchByFingerprint(t *testing.T) {
 	// This test verifies the fingerprint suffix matching path in GetKey
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "nonexistent-gpg-binary-xyz"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1301,7 +1301,7 @@ func TestGetKey_MatchByFingerprint(t *testing.T) {
 func TestGenerate_KeyNotFoundAfterGeneration(t *testing.T) {
 	// Use a script that pretends to succeed gen-key but has no keys to list
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", t.TempDir())
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1328,7 +1328,7 @@ func TestGenerate_KeyNotFoundAfterGeneration(t *testing.T) {
 
 func TestGetKey_RealGPG_NotFound(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", t.TempDir())
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1350,7 +1350,7 @@ func TestGetKey_RealGPG_NotFound(t *testing.T) {
 
 func TestGetPublicKey_RealGPG_NotFound(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", t.TempDir())
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1375,7 +1375,7 @@ func TestGetPublicKey_RealGPG_NotFound(t *testing.T) {
 
 func TestTestSigning_RealGPG_InvalidKey(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	t.Setenv("GNUPGHOME", t.TempDir())
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1457,7 +1457,7 @@ func TestValidateGenerateOptions_DateExpiration(t *testing.T) {
 
 func TestGenerate_InvalidKeyType_RunsValidation(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1479,7 +1479,7 @@ func TestGenerate_InvalidKeyType_RunsValidation(t *testing.T) {
 
 func TestGenerate_InvalidKeyLength_TooSmall(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1501,7 +1501,7 @@ func TestGenerate_InvalidKeyLength_TooSmall(t *testing.T) {
 
 func TestGenerate_InvalidKeyLength_TooLarge(t *testing.T) {
 	tmp := t.TempDir()
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
 	log := _logger.New(_logger.LevelError, os.Stderr)
@@ -1655,7 +1655,7 @@ uid:-::::::::Test User <test@example.com>:
 func TestResolveGPGCommand_NoneAvailable(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("PATH", tmp) // empty dir, no GPG
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "" // no explicit command
@@ -1671,7 +1671,7 @@ func TestGenerate_WithComment_FakeGPG(t *testing.T) {
 	tmp := t.TempDir()
 	writeFakeGPG(t, tmp)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1703,7 +1703,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1734,7 +1734,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1764,7 +1764,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1788,7 +1788,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1824,7 +1824,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1840,7 +1840,7 @@ esac
 func TestDelete_GPGNotInstalled(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("PATH", tmp) // empty PATH, no gpg
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1868,7 +1868,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1898,7 +1898,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1935,7 +1935,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"
@@ -1971,7 +1971,7 @@ esac
 `
 	os.WriteFile(filepath.Join(tmp, "gpg"), []byte(script), 0o755)
 	t.Setenv("PATH", tmp)
-	t.Setenv("HOME", tmp)
+	_testutil.SetHome(t, tmp)
 
 	cfg := _config.DefaultConfig()
 	cfg.Advanced.GPGCommand = "gpg"

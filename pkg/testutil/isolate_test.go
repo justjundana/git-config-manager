@@ -3,6 +3,7 @@ package testutil
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,8 +25,10 @@ var errInjected = errors.New("injected failure")
 func swapHooks(t *testing.T) {
 	t.Helper()
 	mkdirAll, writeFile, mkdirTemp, setenv, fatal, out := mkdirAllFn, writeFileFn, mkdirTempFn, setenvFn, fatalFn, errOut
+	getwd, chdir := getwdFn, chdirFn
 	t.Cleanup(func() {
 		mkdirAllFn, writeFileFn, mkdirTempFn, setenvFn, fatalFn, errOut = mkdirAll, writeFile, mkdirTemp, setenv, fatal, out
+		getwdFn, chdirFn = getwd, chdir
 	})
 }
 
@@ -360,5 +363,159 @@ func TestRunIsolated_RestoresEnvironmentAfterPartialFailure(t *testing.T) {
 		if got := os.Getenv(key); got != want {
 			t.Errorf("%s = %q after failed run, want it restored to %q", key, got, want)
 		}
+	}
+}
+
+// The bug this guards against only appears on Windows: os.UserHomeDir reads
+// $HOME on Unix but %USERPROFILE% there, so a test setting HOME alone still
+// resolved against the process-wide sandbox — where earlier tests in the same
+// package had already written. Three internal/shell tests failed that way the
+// first time the suite ran on Windows CI.
+func TestSetHome_SetsBothPlatformVariables(t *testing.T) {
+	dir := t.TempDir()
+
+	SetHome(t, dir)
+
+	if got := os.Getenv("HOME"); got != dir {
+		t.Errorf("HOME = %q, want %q", got, dir)
+	}
+	if got := os.Getenv("USERPROFILE"); got != dir {
+		t.Errorf("USERPROFILE = %q, want %q — os.UserHomeDir reads this on Windows", got, dir)
+	}
+
+	// Whichever variable the running platform consults, it must land here.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir: %v", err)
+	}
+	if home != dir {
+		t.Errorf("UserHomeDir() = %q, want %q", home, dir)
+	}
+}
+
+func TestSetHome_RestoresBothAfterTest(t *testing.T) {
+	outerHome := os.Getenv("HOME")
+	outerProfile := os.Getenv("USERPROFILE")
+
+	t.Run("inside", func(t *testing.T) {
+		SetHome(t, t.TempDir())
+	})
+
+	if got := os.Getenv("HOME"); got != outerHome {
+		t.Errorf("HOME = %q, want it restored to %q", got, outerHome)
+	}
+	if got := os.Getenv("USERPROFILE"); got != outerProfile {
+		t.Errorf("USERPROFILE = %q, want it restored to %q", got, outerProfile)
+	}
+}
+
+// The environment overrides cannot protect the repository-local git scope:
+// "git config --local" resolves the repository from the working directory, so
+// a test activating a profile inside the GCM checkout wrote into that
+// checkout's own .git/config.
+func TestWorkDir_MovesAndRestores(t *testing.T) {
+	before, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+
+	var inside string
+	t.Run("inside", func(t *testing.T) {
+		inside = WorkDir(t)
+
+		here, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd: %v", err)
+		}
+		if here != inside {
+			t.Errorf("working directory = %q, want %q", here, inside)
+		}
+		if here == before {
+			t.Error("WorkDir should move out of the caller's directory")
+		}
+	})
+
+	after, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if after != before {
+		t.Errorf("working directory = %q, want it restored to %q", after, before)
+	}
+}
+
+// A throwaway directory must not sit inside any git repository, or the local
+// scope leaks right back into whatever encloses it.
+func TestWorkDir_IsOutsideAnyRepository(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+
+	WorkDir(t)
+
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").CombinedOutput()
+	if err == nil {
+		t.Errorf("the working directory is inside a repository (%s)", strings.TrimSpace(string(out)))
+	}
+}
+
+func TestWorkDir_ReportsFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		arrange func()
+		want    string
+	}{
+		{
+			name:    "cannot read the current directory",
+			arrange: func() { getwdFn = func() (string, error) { return "", errInjected } },
+			want:    "reading working directory",
+		},
+		{
+			name:    "cannot enter the sandbox",
+			arrange: func() { chdirFn = func(string) error { return errInjected } },
+			want:    "entering",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			swapHooks(t)
+
+			var got string
+			fatalFn = func(_ *testing.T, format string, args ...any) { got = fmt.Sprintf(format, args...) }
+			tc.arrange()
+
+			if got := WorkDir(t); got != "" {
+				t.Errorf("WorkDir should return an empty path after a fatal error, got %q", got)
+			}
+
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("message = %q, want it to mention %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// When the directory cannot be re-read after entering it, the requested path is
+// returned rather than an empty string.
+func TestWorkDir_FallsBackToRequestedPath(t *testing.T) {
+	swapHooks(t)
+
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(previous) })
+
+	calls := 0
+	realGetwd := getwdFn
+	getwdFn = func() (string, error) {
+		calls++
+		if calls > 1 {
+			return "", errInjected
+		}
+		return realGetwd()
+	}
+
+	if got := WorkDir(t); got == "" {
+		t.Error("WorkDir should fall back to the directory it created")
 	}
 }
