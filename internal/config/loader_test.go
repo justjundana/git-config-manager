@@ -905,3 +905,77 @@ func TestEnsureDirs_ChmodError(t *testing.T) {
 func TestMain(m *testing.M) {
 	os.Exit(_testutil.RunIsolated(m))
 }
+
+// gcm clean recursively deletes cache_dir, which comes straight from the
+// user-editable (and corruptible) config file.
+func TestEnsureRemovable(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	safe := filepath.Join(home, ".gcm", "cache")
+	elsewhere := filepath.Join(t.TempDir(), "relocated-cache")
+
+	for _, tc := range []struct {
+		name    string
+		path    string
+		wantErr string
+	}{
+		{"default cache dir", safe, ""},
+		{"relocated cache dir", elsewhere, ""},
+		{"empty", "", "no path configured"},
+		{"whitespace only", "   ", "no path configured"},
+		{"relative", "cache", "not absolute"},
+		{"filesystem root", string(filepath.Separator), "filesystem root"},
+		{"the home directory", home, "home directory"},
+		{"an ancestor of home", filepath.Dir(home), "contains the home directory"},
+		{"the GCM data directory", filepath.Join(home, ".gcm"), "GCM data directory"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := EnsureRemovable(tc.path)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("EnsureRemovable(%q) = %v, want nil", tc.path, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("EnsureRemovable(%q) = nil, want an error mentioning %q", tc.path, tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("error = %v, want it to mention %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestEnsureRemovable_ToleratesUnknownHome(t *testing.T) {
+	orig := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return "", fmt.Errorf("no home") }
+	t.Cleanup(func() { userHomeDirFn = orig })
+
+	// With no home to protect it still guards the GCM data directory.
+	if err := EnsureRemovable(filepath.Join(t.TempDir(), "cache")); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestTempDirCandidates_NoTempDir(t *testing.T) {
+	orig := tempDirFn
+	tempDirFn = func() string { return "" }
+	t.Cleanup(func() { tempDirFn = orig })
+
+	if got := tempDirCandidates(); got != nil {
+		t.Errorf("tempDirCandidates() = %v, want nil when the OS reports no temp dir", got)
+	}
+}
+
+func TestIsUnderAnyDir_EdgeCases(t *testing.T) {
+	if isUnderAnyDir("", []string{"/tmp"}) {
+		t.Error("an empty path is never inside a directory")
+	}
+	// filepath.Rel fails when one side is absolute and the other is not, which
+	// must be treated as "not contained" rather than a match.
+	if isUnderAnyDir("/absolute/path", []string{"relative/dir"}) {
+		t.Error("an unrelatable pair must not count as contained")
+	}
+}

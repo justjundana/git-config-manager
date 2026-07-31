@@ -29,6 +29,11 @@ func newCleanCmd() *cobra.Command {
 				}
 			}
 
+			// cache_dir comes straight from the config file, so validate it
+			// before recursively deleting it.
+			if err := _config.EnsureRemovable(cacheDir); err != nil {
+				return err
+			}
 			if err := os.RemoveAll(cacheDir); err != nil {
 				return err
 			}

@@ -19,6 +19,7 @@ var (
 	removeFn      = os.Remove
 	renameFn      = os.Rename
 	configPathFn  = func() string { return filepath.Join(GCMDir(), "config.yaml") }
+	tempDirFn     = os.TempDir
 )
 
 type tempFile interface {
@@ -165,12 +166,92 @@ func validateConfigPaths(cfg *Config, configPath string) error {
 	return nil
 }
 
+// EnsureRemovable reports whether path may be recursively deleted by GCM.
+//
+// "gcm clean" runs os.RemoveAll on directories taken straight from the config
+// file, and that file is user-editable — and, as this project has learned,
+// corruptible. Without a check, a cache_dir of "/" or "$HOME" turns a cache
+// purge into wiping the home directory.
+//
+// The rule is deliberately narrow: it blocks the catastrophic targets (empty,
+// relative, filesystem root, the home directory, or any ancestor of the home
+// or GCM data directory) while still allowing a cache directory the user has
+// legitimately relocated elsewhere.
+func EnsureRemovable(path string) error {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return fmt.Errorf("refusing to delete: no path configured")
+	}
+	if !filepath.IsAbs(trimmed) {
+		return fmt.Errorf("refusing to delete %q: path is not absolute", path)
+	}
+
+	abs := filepath.Clean(trimmed)
+	if filepath.Dir(abs) == abs {
+		return fmt.Errorf("refusing to delete %q: that is the filesystem root", abs)
+	}
+
+	// Compare through resolved forms as well: on macOS the temp and home trees
+	// reach the same directory via /var and /private/var, and a raw string
+	// comparison would miss the match.
+	candidates := pathCandidates(abs)
+
+	// Derive both checks from one home lookup. GCMDir terminates the process
+	// when the home directory is unknown, and a validation helper must never
+	// do that — with no home there is simply nothing further to protect.
+	home, err := userHomeDirFn()
+	if err != nil || home == "" {
+		return nil
+	}
+
+	if samePath(abs, home) {
+		return fmt.Errorf("refusing to delete %q: that is the home directory", abs)
+	}
+	if isUnderAnyDir(home, candidates) {
+		return fmt.Errorf("refusing to delete %q: it contains the home directory", abs)
+	}
+
+	// Only equality is checked here: the data directory lives inside the home
+	// directory, so anything that *contains* it also contains home and was
+	// already rejected above.
+	if samePath(abs, filepath.Join(home, ".gcm")) {
+		return fmt.Errorf("refusing to delete %q: that is the GCM data directory", abs)
+	}
+
+	return nil
+}
+
+// pathCandidates returns p cleaned, plus its symlink-resolved form when that
+// differs and the path exists.
+func pathCandidates(p string) []string {
+	out := []string{filepath.Clean(p)}
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		if cleaned := filepath.Clean(resolved); cleaned != out[0] {
+			out = append(out, cleaned)
+		}
+	}
+	return out
+}
+
+// samePath reports whether a and b denote the same location, comparing both
+// their literal and symlink-resolved forms.
+func samePath(a, b string) bool {
+	for _, x := range pathCandidates(a) {
+		for _, y := range pathCandidates(b) {
+			if x == y {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // tempDirCandidates returns the OS temp directory both as reported and with
 // symlinks resolved. On macOS TMPDIR is /var/folders/..., which resolves to
 // /private/var/folders/...; a config may record either spelling, so both are
 // needed for a reliable containment test.
 func tempDirCandidates() []string {
-	dir := os.TempDir()
+	dir := tempDirFn()
 	if dir == "" {
 		return nil
 	}
