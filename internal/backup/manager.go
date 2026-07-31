@@ -323,6 +323,47 @@ func (m *Manager) extractArchive(backupPath, stagingDir string) error {
 	return nil
 }
 
+// Archive-relative directory names used by Create. They are fixed inside the
+// tarball even when the configured directories they came from are not.
+const (
+	profilesArchiveDir  = "profiles"
+	templatesArchiveDir = "templates"
+)
+
+// restoreTarget maps an archive-relative path to where the running
+// configuration expects that file to live.
+//
+// Create reads profiles from cfg.ProfilesDir and templates from
+// cfg.TemplatesDir but stores them under the fixed prefixes above. Restoring
+// those prefixes blindly under GCMDir() therefore writes to the wrong place
+// whenever either directory is customised: the files land somewhere GCM never
+// reads, so the restore reports success while appearing to do nothing.
+//
+// rel always comes from walking the staging directory, whose contents were
+// validated during extraction, so it can never contain "..".
+func (m *Manager) restoreTarget(gcmDirAbs, rel string) string {
+	if sub, ok := underArchiveDir(rel, profilesArchiveDir); ok && m.cfg.ProfilesDir != "" {
+		return filepath.Join(m.cfg.ProfilesDir, sub)
+	}
+	if sub, ok := underArchiveDir(rel, templatesArchiveDir); ok && m.cfg.TemplatesDir != "" {
+		return filepath.Join(m.cfg.TemplatesDir, sub)
+	}
+	return filepath.Join(gcmDirAbs, rel)
+}
+
+// underArchiveDir reports whether rel is dir itself or lies inside it, and
+// returns the portion below dir ("" for the directory entry itself).
+func underArchiveDir(rel, dir string) (string, bool) {
+	if rel == dir {
+		return "", true
+	}
+	prefix := dir + string(filepath.Separator)
+	if strings.HasPrefix(rel, prefix) {
+		return strings.TrimPrefix(rel, prefix), true
+	}
+	return "", false
+}
+
 func (m *Manager) applyStagedRestore(stagingDir, gcmDirAbs string) error {
 	rollbackDir, err := restoreMkdirTempFn(gcmDirAbs, ".restore-rollback-*")
 	if err != nil {
@@ -340,7 +381,7 @@ func (m *Manager) applyStagedRestore(stagingDir, gcmDirAbs string) error {
 	rollback := func() {
 		for i := len(changes) - 1; i >= 0; i-- {
 			change := changes[i]
-			target := filepath.Join(gcmDirAbs, change.rel)
+			target := m.restoreTarget(gcmDirAbs, change.rel)
 			_ = os.RemoveAll(target)
 			if change.hadOriginal {
 				backupPath := filepath.Join(rollbackDir, change.rel)
@@ -365,7 +406,7 @@ func (m *Manager) applyStagedRestore(stagingDir, gcmDirAbs string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(gcmDirAbs, rel)
+		target := m.restoreTarget(gcmDirAbs, rel)
 
 		if entry.IsDir() {
 			if info, err := restoreStatFn(target); err == nil {

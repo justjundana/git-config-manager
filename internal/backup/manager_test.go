@@ -242,6 +242,100 @@ func TestListEmpty(t *testing.T) {
 	}
 }
 
+// Create reads profiles from cfg.ProfilesDir but stores them under a fixed
+// "profiles/" prefix. Restoring that prefix under GCMDir() puts the files
+// somewhere GCM never reads when the directory is customised, so the restore
+// reports success while the profiles stay missing.
+func TestRestoreRoundTrip_HonoursCustomProfilesAndTemplatesDirs(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
+
+	// Both directories deliberately live outside ~/.gcm.
+	cfg := _config.DefaultConfig()
+	cfg.ProfilesDir = filepath.Join(tmp, "elsewhere", "profiles")
+	cfg.TemplatesDir = filepath.Join(tmp, "elsewhere", "templates")
+	if err := os.MkdirAll(cfg.ProfilesDir, 0o755); err != nil {
+		t.Fatalf("mkdir profiles: %v", err)
+	}
+	if err := os.MkdirAll(cfg.TemplatesDir, 0o755); err != nil {
+		t.Fatalf("mkdir templates: %v", err)
+	}
+
+	profilePath := filepath.Join(cfg.ProfilesDir, "work.yaml")
+	templatePath := filepath.Join(cfg.TemplatesDir, "corp.yaml")
+	if err := os.WriteFile(profilePath, []byte("name: work\n"), 0o600); err != nil {
+		t.Fatalf("seed profile: %v", err)
+	}
+	if err := os.WriteFile(templatePath, []byte("name: corp\n"), 0o600); err != nil {
+		t.Fatalf("seed template: %v", err)
+	}
+
+	m := NewManager(cfg, _logger.New(_logger.LevelError, os.Stderr))
+	info, err := m.Create()
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if info.Profiles != 1 || info.Templates != 1 {
+		t.Fatalf("archived %d profiles / %d templates, want 1 / 1", info.Profiles, info.Templates)
+	}
+
+	// Lose the originals, then restore.
+	if err := os.RemoveAll(filepath.Join(tmp, "elsewhere")); err != nil {
+		t.Fatalf("remove originals: %v", err)
+	}
+	if err := m.Restore(info.Path); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	got, err := os.ReadFile(profilePath)
+	if err != nil {
+		t.Fatalf("profile must be restored into cfg.ProfilesDir: %v", err)
+	}
+	if string(got) != "name: work\n" {
+		t.Errorf("restored profile = %q, want %q", got, "name: work\n")
+	}
+	if _, err := os.ReadFile(templatePath); err != nil {
+		t.Fatalf("template must be restored into cfg.TemplatesDir: %v", err)
+	}
+
+	// And nothing may be dropped into the default location instead.
+	stray := filepath.Join(_config.GCMDir(), "profiles", "work.yaml")
+	if _, err := os.Stat(stray); err == nil {
+		t.Errorf("profile was also written to the default dir %s", stray)
+	}
+}
+
+func TestRestoreTarget_FallsBackToGCMDir(t *testing.T) {
+	m, _ := testManager(t)
+	gcmDir := _config.GCMDir()
+
+	// Paths outside the profiles/ and templates/ prefixes keep the old mapping.
+	if got, want := m.restoreTarget(gcmDir, "config.yaml"), filepath.Join(gcmDir, "config.yaml"); got != want {
+		t.Errorf("restoreTarget(config.yaml) = %q, want %q", got, want)
+	}
+	// A name that merely starts with the same letters is not inside the dir.
+	if got, want := m.restoreTarget(gcmDir, "profiles-old"), filepath.Join(gcmDir, "profiles-old"); got != want {
+		t.Errorf("restoreTarget(profiles-old) = %q, want %q", got, want)
+	}
+	// The directory entry itself maps to the configured directory.
+	if got, want := m.restoreTarget(gcmDir, "profiles"), m.cfg.ProfilesDir; got != want {
+		t.Errorf("restoreTarget(profiles) = %q, want %q", got, want)
+	}
+	if got, want := m.restoreTarget(gcmDir, "templates"), m.cfg.TemplatesDir; got != want {
+		t.Errorf("restoreTarget(templates) = %q, want %q", got, want)
+	}
+
+	// With the directories unset the mapping must not produce a rooted path.
+	m.cfg.ProfilesDir = ""
+	m.cfg.TemplatesDir = ""
+	if got, want := m.restoreTarget(gcmDir, "profiles/work.yaml"), filepath.Join(gcmDir, "profiles/work.yaml"); got != want {
+		t.Errorf("restoreTarget with empty ProfilesDir = %q, want %q", got, want)
+	}
+	if got, want := m.restoreTarget(gcmDir, "templates/corp.yaml"), filepath.Join(gcmDir, "templates/corp.yaml"); got != want {
+		t.Errorf("restoreTarget with empty TemplatesDir = %q, want %q", got, want)
+	}
+}
+
 func TestRestore_InvalidPath(t *testing.T) {
 	m, _ := testManager(t)
 	err := m.Restore("/nonexistent/path.tar.gz")
