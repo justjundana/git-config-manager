@@ -587,28 +587,121 @@ remove_gpg_keys() {
     done
 }
 
-# Remove git global/local identity set by GCM
+# gcm_profile_field prints every value of a field from the GCM profile YAMLs.
+# path is either "git.user.<field>" or "ssh.<field>"; the files are produced by
+# GCM's own marshaller, so the two-level, four-space layout is fixed.
+gcm_profile_field() {
+    local section="$1" subsection="$2" field="$3"
+    local profiles_dir="${HOME}/.gcm/profiles"
+    [[ -d "$profiles_dir" ]] || return 0
+
+    awk -v section="$section" -v subsection="$subsection" -v field="$field" '
+        function value(line,   v) { v = line; sub(/^[a-zA-Z_]+:[[:space:]]*/, "", v); gsub(/^"|"$/, "", v); return v }
+        /^[^[:space:]]/ { in_section = ($0 == section ":"); in_sub = 0; next }
+        in_section && /^    [^[:space:]]/ {
+            line = $0; sub(/^    /, "", line)
+            key = line; sub(/:.*$/, "", key)
+            if (subsection == "") { if (key == field && value(line) != "") print value(line) }
+            else in_sub = (key == subsection)
+            next
+        }
+        in_section && in_sub && /^        [a-zA-Z_]/ {
+            line = $0; sub(/^        /, "", line)
+            key = line; sub(/:.*$/, "", key)
+            if (key == field && value(line) != "") print value(line)
+        }
+    ' "$profiles_dir"/*.yaml 2>/dev/null
+}
+
+# gcm_owns_value succeeds when the given value appears in any profile, which is
+# what proves GCM wrote it into git config.
+gcm_owns_value() {
+    local wanted="$3" found
+    while IFS= read -r found; do
+        [[ "$found" == "$wanted" ]] && return 0
+    done < <(gcm_profile_field "$1" "$2" "${4:-}")
+    return 1
+}
+
+# Remove git identity GCM wrote — and only that.
+#
+# GCM sets the global identity from the active profile, so a value that matches
+# one of the profiles is ours. Anything else predates GCM and must survive:
+# unsetting user.email unconditionally destroyed identities that had been
+# configured for years before GCM was ever installed.
+#
+# This runs before the data directory is removed, so the profiles are still
+# available to compare against.
 remove_git_identity() {
     print_step "Removing git identity configuration..."
 
     local cleaned=false
-    for key in user.name user.email user.signingkey commit.gpgsign gpg.format gpg.program core.sshCommand tag.gpgsign tag.forceSignAnnotated; do
-        if git config --global "$key" &>/dev/null; then
+    local kept=()
+
+    # Identity values are verifiable against the profiles.
+    local key field current
+    for key in user.name user.email user.signingkey; do
+        field="${key#user.}"
+        [[ "$field" == "signingkey" ]] && field="signingkey"
+        current=$(git config --global --get "$key" 2>/dev/null) || continue
+        [[ -n "$current" ]] || continue
+
+        if gcm_owns_value git user "$current" "$field"; then
             git config --global --unset-all "$key" 2>/dev/null || true
             print_success "Unset git global $key"
             cleaned=true
+        else
+            kept+=("$key = $current")
         fi
     done
+
+    # core.sshCommand is ours only when it points at a key a profile records.
+    current=$(git config --global --get core.sshCommand 2>/dev/null || true)
+    if [[ -n "$current" ]]; then
+        local owned=false key_path
+        while IFS= read -r key_path; do
+            [[ -n "$key_path" && "$current" == *"$key_path"* ]] && owned=true && break
+        done < <(gcm_profile_field ssh "" key_path)
+
+        if [[ "$owned" == true ]]; then
+            git config --global --unset-all core.sshCommand 2>/dev/null || true
+            print_success "Unset git global core.sshCommand"
+            cleaned=true
+        else
+            kept+=("core.sshCommand = $current")
+        fi
+    fi
+
+    # The remaining keys are settings rather than identity and cannot be
+    # attributed to GCM, so they are reported instead of removed.
+    for key in commit.gpgsign gpg.format gpg.program tag.gpgsign tag.forceSignAnnotated; do
+        current=$(git config --global --get "$key" 2>/dev/null) || continue
+        [[ -n "$current" ]] && kept+=("$key = $current")
+    done
+
+    if [[ ${#kept[@]} -gt 0 ]]; then
+        echo
+        print_info "Left in place — GCM cannot prove it set these:"
+        for entry in "${kept[@]}"; do
+            echo "    $entry"
+        done
+        print_info "  Remove any you no longer want with: git config --global --unset <key>"
+    fi
 
     # Clean local repo if inside one
     if git rev-parse --is-inside-work-tree &>/dev/null; then
         local git_root
         git_root=$(git rev-parse --show-toplevel)
-        for key in user.name user.email user.signingkey commit.gpgsign; do
-            if git config --local "$key" &>/dev/null; then
+        for key in user.name user.email user.signingkey; do
+            field="${key#user.}"
+            current=$(git config --local --get "$key" 2>/dev/null) || continue
+            [[ -n "$current" ]] || continue
+            if gcm_owns_value git user "$current" "$field"; then
                 git config --local --unset-all "$key" 2>/dev/null || true
                 print_success "Unset git local $key"
                 cleaned=true
+            else
+                print_info "Keeping git local $key ($current) — not set by GCM"
             fi
         done
         # Remove GCM markers
@@ -710,21 +803,44 @@ remove_credential_store() {
 remove_project_markers() {
     print_step "Scanning for .gcm-profile and gcm-session markers..."
 
-    local markers_found=0
     local scan_dirs=("${HOME}/projects" "${HOME}/Projects" "${HOME}/dev" "${HOME}/Dev" "${HOME}/src" "${HOME}/work" "${HOME}/Work" "${HOME}/repos" "${HOME}/code")
 
+    # Collect first, delete second. A .gcm-profile is written by the user to pin
+    # a profile to a project, so deleting a home-wide sweep of them without
+    # showing what was found removes configuration the user authored.
+    local candidates=()
+    local dir marker
     for dir in "${scan_dirs[@]}"; do
         [[ -d "$dir" ]] || continue
         while IFS= read -r -d '' marker; do
-            rm -f "$marker"
-            markers_found=$((markers_found + 1))
+            candidates+=("$marker")
         done < <(find "$dir" -maxdepth 4 -name ".gcm-profile" -print0 2>/dev/null)
 
         while IFS= read -r -d '' marker; do
-            rm -f "$marker"
-            markers_found=$((markers_found + 1))
+            candidates+=("$marker")
         done < <(find "$dir" -maxdepth 5 -path "*/.git/gcm-session" -print0 2>/dev/null)
     done
+
+    local markers_found=0
+    if [[ ${#candidates[@]} -gt 0 ]]; then
+        echo "  Found ${#candidates[@]} marker file(s):"
+        for marker in "${candidates[@]}"; do
+            echo "    $marker"
+        done
+        echo
+
+        local reply
+        reply=$(get_user_input "Remove these marker files? ${DIM}(y/N):${NC} ")
+        if [[ "$reply" =~ ^[Yy]$ ]]; then
+            for marker in "${candidates[@]}"; do
+                rm -f "$marker" && markers_found=$((markers_found + 1))
+            done
+        else
+            print_info "Left ${#candidates[@]} marker file(s) in place"
+            print_info "  Session markers are harmless without GCM; .gcm-profile files are yours"
+            return
+        fi
+    fi
 
     if [[ $markers_found -gt 0 ]]; then
         print_success "Removed $markers_found project marker(s)"

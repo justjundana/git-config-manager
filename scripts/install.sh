@@ -712,11 +712,19 @@ check_existing_installation() {
         fi
     fi
 
-    # If binary exists but is broken (corrupted/partial download), remove it
+    # A binary that does not answer "gcm version" is not necessarily ours.
+    # "GCM" is also the common abbreviation for Git Credential Manager, and
+    # $install_dir or /usr/local/bin may hold an unrelated tool of that name.
+    # Deleting it would destroy a program this installer does not own, so
+    # report it instead — the install below copies over its own target anyway.
     if [[ "$binary_found" == true && "$binary_valid" == false ]]; then
-        print_warning "Found corrupted/incomplete gcm binary at $found_path"
-        print_info "Removing broken binary and proceeding with fresh install..."
-        rm -f "$found_path"
+        print_warning "A file named 'gcm' at $found_path does not respond to 'gcm version'"
+        if [[ "$found_path" == "${install_dir}/${binary_name}" ]]; then
+            print_info "It will be overwritten by this install."
+        else
+            print_info "It is outside the install directory and will be left untouched."
+            print_info "  If it shadows the new binary on PATH, remove or rename it yourself."
+        fi
         echo
         return
     fi

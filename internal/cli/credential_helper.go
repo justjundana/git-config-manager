@@ -188,6 +188,11 @@ func RegisterCredentialHelper() error {
 		key := fmt.Sprintf("credential.%s.helper", server)
 		ctx, cancel := context.WithTimeout(context.Background(), credentialHelperTimeout)
 
+		// Park whatever the user already had, so uninstall can put it back.
+		// Registering resets this key, which previously discarded a helper the
+		// user had configured for this host with no way to recover it.
+		saveExistingCredentialHelpers(ctx, server, key)
+
 		// Remove any existing GCM credential helper entries for this server
 		_ = exec.CommandContext(ctx, "git", "config", "--global", "--unset-all", key).Run()
 
@@ -208,13 +213,59 @@ func RegisterCredentialHelper() error {
 	return nil
 }
 
+// savedHelperKey is where RegisterCredentialHelper parks a host's pre-existing
+// credential helpers. Git reads the last dot-separated component as the key and
+// the rest as the subsection, so the server URL is carried verbatim.
+func savedHelperKey(server string) string {
+	return fmt.Sprintf("gcm.saved.%s.helper", server)
+}
+
+// saveExistingCredentialHelpers records the non-GCM helpers currently
+// configured for server, unless a record already exists.
+//
+// Helpers GCM itself registered are skipped, so re-running "gcm init" cannot
+// overwrite the original record with GCM's own entry.
+func saveExistingCredentialHelpers(ctx context.Context, server, key string) {
+	savedKey := savedHelperKey(server)
+	if out, err := exec.CommandContext(ctx, "git", "config", "--global", "--get-all", savedKey).Output(); err == nil && strings.TrimSpace(string(out)) != "" {
+		return // already recorded by an earlier registration
+	}
+
+	out, err := exec.CommandContext(ctx, "git", "config", "--global", "--get-all", key).Output()
+	if err != nil {
+		return // nothing configured for this host
+	}
+
+	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		value := strings.TrimSpace(line)
+		if value == "" || credentialHelperConfigContainsGCM(value) {
+			continue
+		}
+		_ = exec.CommandContext(ctx, "git", "config", "--global", "--add", savedKey, value).Run()
+	}
+}
+
 // UnregisterCredentialHelper removes GCM from git's credential helper
-// configuration and restores the default system behavior.
+// configuration and restores whatever was configured before GCM took over.
 func UnregisterCredentialHelper() error {
 	for _, server := range credentialHelperServers() {
 		key := fmt.Sprintf("credential.%s.helper", server)
+		savedKey := savedHelperKey(server)
 		ctx, cancel := context.WithTimeout(context.Background(), credentialHelperTimeout)
+
 		_ = exec.CommandContext(ctx, "git", "config", "--global", "--unset-all", key).Run()
+
+		if out, err := exec.CommandContext(ctx, "git", "config", "--global", "--get-all", savedKey).Output(); err == nil {
+			for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+				value := strings.TrimSpace(line)
+				if value == "" {
+					continue
+				}
+				_ = exec.CommandContext(ctx, "git", "config", "--global", "--add", key, value).Run()
+			}
+		}
+		_ = exec.CommandContext(ctx, "git", "config", "--global", "--unset-all", savedKey).Run()
+
 		cancel()
 	}
 	return nil

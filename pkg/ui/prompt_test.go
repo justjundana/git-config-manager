@@ -1168,3 +1168,32 @@ func TestAskPassword_Signal(t *testing.T) {
 		}
 	})
 }
+
+func TestIsInteractive(t *testing.T) {
+	orig := isTerminalFn
+	t.Cleanup(func() { isTerminalFn = orig })
+
+	isTerminalFn = func() bool { return true }
+	if !IsInteractive() {
+		t.Error("expected IsInteractive to report true on a terminal")
+	}
+
+	isTerminalFn = func() bool { return false }
+	if IsInteractive() {
+		t.Error("expected IsInteractive to report false off a terminal")
+	}
+}
+
+func TestSetInteractiveForTesting(t *testing.T) {
+	original := IsInteractive()
+
+	restore := SetInteractiveForTesting(!original)
+	if IsInteractive() == original {
+		t.Error("expected the override to take effect")
+	}
+
+	restore()
+	if IsInteractive() != original {
+		t.Error("expected the restore function to put detection back")
+	}
+}

@@ -127,6 +127,23 @@ func AskPassword(msg string) (string, error) {
 	return string(b), nil
 }
 
+// IsInteractive reports whether someone is present to answer a prompt.
+//
+// Callers use it to decide between asking and choosing a safe default. Without
+// it a prompt in a scripted or hook-driven run either blocks or is answered by
+// whatever happens to be on stdin.
+func IsInteractive() bool {
+	return isTerminalFn()
+}
+
+// SetInteractiveForTesting overrides terminal detection and returns a restore
+// function that must be deferred by the caller.
+func SetInteractiveForTesting(interactive bool) func() {
+	orig := isTerminalFn
+	isTerminalFn = func() bool { return interactive }
+	return func() { isTerminalFn = orig }
+}
+
 // AskConfirm prompts the user for a yes/no confirmation. An empty answer
 // returns defaultVal.
 func AskConfirm(msg string, defaultVal bool) (bool, error) {

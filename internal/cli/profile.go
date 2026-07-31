@@ -826,7 +826,7 @@ func promptProviderAccountUsernames(p *_profile.Profile) error {
 			cleanupProviderData(context.Background(), p.Name, oldState, cleanupDefs)
 		}
 		clearAllProfileProviderAccounts(p)
-		if migrated, migErr := migrateProfileSSHKeyPathToProvider(p.Name, p); migErr != nil {
+		if migrated, migErr := migrateProfileSSHKeyPathWithConsent(p.Name, p); migErr != nil {
 			_ui.Warning("Could not rename SSH key after provider removal: %v", migErr)
 		} else if migrated {
 			_ui.Detail("SSH Key Renamed", p.SSH.KeyPath)

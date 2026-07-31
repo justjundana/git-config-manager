@@ -56,7 +56,7 @@ func applyProfileProviderTransitionWithOptions(ctx context.Context, profileName 
 	}
 
 	cleanupProviderData(ctx, profileName, oldState, cleanupDefs)
-	if migrated, err := migrateProfileSSHKeyPathToProvider(profileName, p); err != nil {
+	if migrated, err := migrateProfileSSHKeyPathWithConsent(profileName, p); err != nil {
 		_ui.Warning("Could not rename SSH key to provider format: %v", err)
 	} else if migrated {
 		_ui.Detail("SSH Key Renamed", p.SSH.KeyPath)
@@ -559,6 +559,45 @@ func sshKeyProfileName(profileName string, p *_profile.Profile) string {
 		return profileName
 	}
 	return fmt.Sprintf("%s_%s", profileName, suffix)
+}
+
+// migrateProfileSSHKeyPathWithConsent renames the key only after the user
+// agrees to it.
+//
+// Everywhere this is called, the rename is a side effect of some other command
+// — activating a profile, connecting a provider, removing one — not the thing
+// the user asked for. Moving files on disk without saying so first is a
+// surprise, so it is offered rather than performed. "gcm repair --fix" calls
+// the migration directly: there the rename is exactly what was requested.
+//
+// With nobody to answer, the key is left alone. A prompt in a scripted or
+// hook-driven run would either block or be answered by whatever happens to be
+// on stdin, and neither is an acceptable way to decide whether to move a
+// private key.
+func migrateProfileSSHKeyPathWithConsent(profileName string, p *_profile.Profile) (bool, error) {
+	target, ok := providerSSHKeyMigrationTarget(profileName, p)
+	if !ok {
+		return false, nil
+	}
+
+	if !_ui.IsInteractive() {
+		_ui.Info("SSH key %s can be renamed to %s", p.SSH.KeyPath, target)
+		_ui.Info("  Run %s to do it", _ui.Cyan("gcm repair --fix"))
+		return false, nil
+	}
+
+	_ui.Blank()
+	_ui.Print("  This profile's SSH key still uses the pre-provider naming:")
+	_ui.Detail("Current", p.SSH.KeyPath)
+	_ui.Detail("Rename to", target)
+
+	confirmed, err := _ui.AskConfirm("Rename it now?", false)
+	if err != nil || !confirmed {
+		_ui.Info("Left the key where it is — run %s to rename it later", _ui.Cyan("gcm repair --fix"))
+		return false, nil
+	}
+
+	return migrateProfileSSHKeyPathToProvider(profileName, p)
 }
 
 func migrateProfileSSHKeyPathToProvider(profileName string, p *_profile.Profile) (bool, error) {

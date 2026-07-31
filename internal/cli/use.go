@@ -100,7 +100,7 @@ Examples:
 
 			p, _ := ctr.ProfileManager.Get(name)
 			if p != nil {
-				if migrated, migErr := migrateProfileSSHKeyPathToProvider(name, p); migErr != nil {
+				if migrated, migErr := migrateProfileSSHKeyPathWithConsent(name, p); migErr != nil {
 					_ui.Warning("Could not rename SSH key to provider format: %v", migErr)
 				} else if migrated {
 					_ui.Detail("SSH Key Renamed", p.SSH.KeyPath)
