@@ -11,6 +11,7 @@ const (
 	ErrCodeInvalid       = 1003
 	ErrCodeActive        = 1004
 	ErrCodeDefault       = 1005
+	ErrCodeStoreMissing  = 1006
 	ErrCodeNameEmpty     = 1010
 	ErrCodeEmailEmpty    = 1011
 	ErrCodeEmailInvalid  = 1012
@@ -83,6 +84,15 @@ func errNotFound(name string) *ProfileError {
 		Message:    fmt.Sprintf("profile %q not found", name),
 		Profile:    name,
 		Suggestion: fmt.Sprintf("Create it with: gcm profile create %s", name),
+	}
+}
+
+func errStoreMissing(dir string, cause error) *ProfileError {
+	return &ProfileError{
+		Code:       ErrCodeStoreMissing,
+		Message:    fmt.Sprintf("profile store %q is missing or unreadable", dir),
+		Cause:      cause,
+		Suggestion: "Run: gcm doctor (then gcm repair --fix if the data directory is wrong)",
 	}
 }
 

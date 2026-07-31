@@ -21,6 +21,7 @@ var (
 	profileRelFn      = filepath.Rel
 	yamlMarshalProfFn = yaml.Marshal
 	mgrGetwdFn        = os.Getwd
+	mgrStatFn         = os.Stat
 )
 
 // Manager handles profile CRUD operations.
@@ -192,6 +193,28 @@ func (m *Manager) List() ([]*Profile, error) {
 	})
 
 	return profiles, nil
+}
+
+// EnsureStore verifies that the profile store directory exists and is readable.
+//
+// List is built on filepath.Glob, which reports no matches and no error when
+// the directory is absent — so "the store is gone" and "the store is empty"
+// are indistinguishable in its result. Read paths can live with that: showing
+// "0 profiles" is harmless.
+//
+// Operations that treat the profile list as an authoritative inventory cannot.
+// For them an absent store silently turns "no profile references this key"
+// into "every key is orphaned", which is a licence to delete all of them.
+// Such callers must call EnsureStore first and refuse to proceed on error.
+func (m *Manager) EnsureStore() error {
+	info, err := mgrStatFn(m.cfg.ProfilesDir)
+	if err != nil {
+		return errStoreMissing(m.cfg.ProfilesDir, err)
+	}
+	if !info.IsDir() {
+		return errStoreMissing(m.cfg.ProfilesDir, fmt.Errorf("not a directory"))
+	}
+	return nil
 }
 
 // Exists checks if a profile exists by name (case-sensitive exact match).

@@ -117,6 +117,61 @@ func TestSSHClean_NoLedgerEntries(t *testing.T) {
 	}
 }
 
+// Regression: when the profile store is gone, List reports zero profiles with
+// no error, so every ledger entry looks orphaned. This is exactly the state a
+// purged temp profiles_dir leaves behind, and it must not license deleting
+// every GCM-generated key.
+func TestSSHClean_RefusesWhenProfileStoreIsMissing(t *testing.T) {
+	ctr := withRepairTestContainer(t)
+
+	keyPath := filepath.Join(ctr.Config.SSHDir, "id_ed25519_work")
+	writeFakeSSHKey(t, keyPath)
+	if err := ctr.KeyLedger.AddSSH(_keyledger.SSHEntry{Profile: "work", KeyPath: keyPath}); err != nil {
+		t.Fatalf("ledger add: %v", err)
+	}
+
+	ctr.Config.ProfilesDir = filepath.Join(t.TempDir(), "gone")
+
+	cmd := newSSHCleanCmd()
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes: %v", err)
+	}
+	if err := cmd.RunE(cmd, nil); err == nil {
+		t.Fatal("ssh clean must refuse while the profile store is unverifiable")
+	}
+
+	if _, err := os.Stat(keyPath); err != nil {
+		t.Fatalf("key must survive the refusal: %v", err)
+	}
+	data, _ := ctr.KeyLedger.Load()
+	if len(data.SSH) != 1 {
+		t.Errorf("ledger should be untouched, got %d entries", len(data.SSH))
+	}
+}
+
+func TestGPGClean_RefusesWhenProfileStoreIsMissing(t *testing.T) {
+	ctr := withRepairTestContainer(t)
+
+	if err := ctr.KeyLedger.AddGPG(_keyledger.GPGEntry{Profile: "work", KeyID: "USEDKEY1"}); err != nil {
+		t.Fatalf("ledger add: %v", err)
+	}
+
+	ctr.Config.ProfilesDir = filepath.Join(t.TempDir(), "gone")
+
+	cmd := newGPGCleanCmd()
+	if err := cmd.Flags().Set("yes", "true"); err != nil {
+		t.Fatalf("set yes: %v", err)
+	}
+	if err := cmd.RunE(cmd, nil); err == nil {
+		t.Fatal("gpg clean must refuse while the profile store is unverifiable")
+	}
+
+	data, _ := ctr.KeyLedger.Load()
+	if len(data.GPG) != 1 {
+		t.Errorf("ledger should be untouched, got %d entries", len(data.GPG))
+	}
+}
+
 func TestGPGKeyReferenced_SuffixMatching(t *testing.T) {
 	ref := map[string]struct{}{"ABCDEF12": {}}
 

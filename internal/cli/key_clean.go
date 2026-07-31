@@ -205,7 +205,14 @@ Examples:
 
 // referencedSSHKeyPaths returns the set of normalized private-key paths
 // currently referenced by any profile.
+//
+// The profile store is verified before listing: an absent store lists as empty
+// with no error, which would mark every ledger entry orphaned and delete all
+// GCM-generated keys.
 func referencedSSHKeyPaths() (map[string]struct{}, error) {
+	if err := ctr.ProfileManager.EnsureStore(); err != nil {
+		return nil, err
+	}
 	profiles, err := ctr.ProfileManager.List()
 	if err != nil {
 		return nil, err
@@ -220,8 +227,12 @@ func referencedSSHKeyPaths() (map[string]struct{}, error) {
 }
 
 // referencedGPGKeyIDs returns the set of GPG key IDs currently referenced by
-// any profile.
+// any profile. As with referencedSSHKeyPaths, an unverified store would make
+// every ledger entry look orphaned.
 func referencedGPGKeyIDs() (map[string]struct{}, error) {
+	if err := ctr.ProfileManager.EnsureStore(); err != nil {
+		return nil, err
+	}
 	profiles, err := ctr.ProfileManager.List()
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package profile
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -577,6 +578,67 @@ func TestManagerDelete_ForceDefaultProfile(t *testing.T) {
 	}
 	if cfg.DefaultProfile != "" {
 		t.Errorf("DefaultProfile should be cleared, got %q", cfg.DefaultProfile)
+	}
+}
+
+func TestEnsureStore_OK(t *testing.T) {
+	mgr, _ := newTestManager(t)
+
+	if err := mgr.EnsureStore(); err != nil {
+		t.Fatalf("EnsureStore on an existing store: %v", err)
+	}
+}
+
+func TestEnsureStore_Missing(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	cfg.ProfilesDir = filepath.Join(t.TempDir(), "gone")
+
+	err := mgr.EnsureStore()
+	if err == nil {
+		t.Fatal("EnsureStore must fail when the store directory is absent")
+	}
+	var perr *ProfileError
+	if !errors.As(err, &perr) || perr.Code != ErrCodeStoreMissing {
+		t.Fatalf("error = %v, want a ProfileError with code %d", err, ErrCodeStoreMissing)
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("error should wrap the stat cause, got %v", err)
+	}
+}
+
+func TestEnsureStore_NotADirectory(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	file := filepath.Join(t.TempDir(), "profiles")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	cfg.ProfilesDir = file
+
+	err := mgr.EnsureStore()
+	if err == nil {
+		t.Fatal("EnsureStore must fail when the store path is not a directory")
+	}
+	if !strings.Contains(err.Error(), "not a directory") {
+		t.Errorf("error = %v, want it to say the path is not a directory", err)
+	}
+}
+
+// The reason EnsureStore exists: List cannot report a missing store, because
+// filepath.Glob returns no matches and no error for one. Callers that delete
+// based on "nothing references this" must not rely on List alone.
+func TestList_CannotDistinguishMissingStoreFromEmptyOne(t *testing.T) {
+	mgr, cfg := newTestManager(t)
+	cfg.ProfilesDir = filepath.Join(t.TempDir(), "gone")
+
+	profiles, err := mgr.List()
+	if err != nil {
+		t.Fatalf("List on a missing store unexpectedly errored: %v", err)
+	}
+	if len(profiles) != 0 {
+		t.Fatalf("List = %d profiles, want 0", len(profiles))
+	}
+	if err := mgr.EnsureStore(); err == nil {
+		t.Error("EnsureStore must catch what List cannot")
 	}
 }
 
