@@ -82,6 +82,9 @@ Definitions for terms used throughout GCM documentation and source code.
 | **Keychain** | The OS credential store (macOS Keychain, Linux secret-service, Windows Credential Manager) |
 | **Zip-slip** | A path traversal attack in archive extraction; GCM validates all paths during restore |
 | **Audit log** | Append-only JSONL file recording all GCM operations (profile switches, key generation, etc.) |
+| **Generated-keys ledger** | `~/.gcm/generated-keys.json`; records every SSH/GPG key GCM itself created. The sole authority for whether a key may be deleted — anything absent from it is treated as the user's own |
+| **Adopted key** | A key you created yourself and attached to a profile. Never recorded in the ledger, and therefore never deleted by GCM |
+| **Kill switch** | `GCM_NO_KEYCHAIN=1`; makes every OS keychain operation fail closed instead of reaching the platform store |
 
 ---
 
@@ -119,6 +122,9 @@ Definitions for terms used throughout GCM documentation and source code.
 | `rw-------`| `0600`| Owner can read, write                |
 | `rw-r--r--`| `0644`| Owner read/write, others read        |
 | `rwxr-xr-x`| `0755`| Owner full, others read/execute      |
+
+> These are POSIX modes, enforced on macOS and Linux. On Windows `os.Chmod`
+> only toggles the read-only attribute and does not restrict other users.
 
 ---
 

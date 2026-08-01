@@ -170,6 +170,23 @@ go mod verify
 
 ---
 
+## Development Tooling
+
+Not linked into the binary; used by CI and local development.
+
+| Tool | Purpose | Where |
+| ---- | ------- | ----- |
+| `golangci-lint` | Go linting (`govet`) | `lint` job |
+| `govulncheck` | Known-vulnerability scan of the dependency graph | `govulncheck` job |
+| `shellcheck` | Shell script analysis for `scripts/*.sh`, gated at error severity | `shellcheck` job |
+| `goreleaser` | Cross-platform release builds | `release` jobs |
+
+`pkg/testutil` is part of this module rather than an external tool: it provides
+the sandbox every test package installs from `TestMain`. It is imported only by
+`_test.go` files and is not linked into the released binary.
+
+---
+
 ## Security Considerations
 
 All dependencies are:

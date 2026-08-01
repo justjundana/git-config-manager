@@ -186,6 +186,7 @@ type Container struct {
 | ------------- | ------------------------------------------------ |
 | `pkg/ui`      | Prompts, confirmations, selects, spinners, tables, colors |
 | `pkg/logger`  | Structured logging with levels and fields        |
+| `pkg/testutil`| Hermetic sandbox installed by every package's `TestMain` |
 | `pkg/version` | Build version info (populated via ldflags)       |
 
 ---
@@ -348,12 +349,34 @@ GCM is single-process, single-goroutine for most operations. Concurrency appears
 ### Token Storage Selection
 
 ```
+0. GCM_NO_KEYCHAIN=1? → keychain fails closed, skip to 3
 1. use_keychain enabled? → try OS keychain
 2. Keychain failed? → secure fallback only
 3. encrypt_tokens + master_password? → AES-256-GCM encrypted file
 4. allow_plaintext_tokens? → plain-text file (0600 permissions)
 5. Neither? → fail closed
 ```
+
+The kill switch is enforced inside the keyring accessors, not at their call
+sites, so no code path can reach the platform store while it is set.
+
+### Destructive-Operation Invariants
+
+Several commands decide what to delete from what is *absent* from an inventory.
+That inference is only sound when the inventory is known to be complete, so
+each such path verifies its source first:
+
+| Operation | Inventory | Refuses when |
+| --------- | --------- | ------------ |
+| `ssh clean` / `gpg clean` | generated-keys ledger vs. profile listing | profiles dir missing/unreadable, or any profile fails to parse |
+| `profile delete` (key removal) | generated-keys ledger | ledger unreadable — the key is kept |
+| `backup create` | profiles dir listing | profiles dir unreadable, before any pruning runs |
+| `clean` | `cache_dir` from config | path is empty, relative, root, `$HOME`, or contains `$HOME`/`~/.gcm` |
+| `config.Save` | `profiles_dir`/`templates_dir`/`cache_dir` | any points into the OS temp directory |
+
+The generated-keys ledger (`~/.gcm/generated-keys.json`) is the single source
+of truth for "did GCM create this key". Anything not in it is treated as the
+user's own and never deleted.
 
 ### Backup Archive Structure
 

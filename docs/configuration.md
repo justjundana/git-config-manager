@@ -21,6 +21,11 @@ GCM stores all data under `~/.gcm/`. This document covers the directory layout, 
 
 Sensitive directories (`tokens/`, `backups/`, `logs/`) are created with `0700` permissions.
 
+> These are POSIX modes and are enforced on macOS and Linux only. On Windows,
+> Go's `os.Chmod` toggles the read-only attribute and does not restrict other
+> users, so those directories are not access-restricted there. See
+> [Security](security.md#platform-caveat-windows).
+
 ---
 
 ## Global Configuration (`config.yaml`)
@@ -311,6 +316,27 @@ Actions logged include:
 | --------------------- | --------------------------------------------- |
 | `_GCM_PROMPT`         | Shell variable set by precmd hook with active profile name (used in prompt) |
 | `SHELL`               | Used by `gcm init` to detect your shell       |
+| `GCM_NO_KEYCHAIN`     | Set to `1` to disable OS keychain access entirely (see below) |
+
+### `GCM_NO_KEYCHAIN`
+
+When set to `1`, every keychain read, write and delete fails closed instead of
+reaching the platform credential store. Storage then falls back to whatever
+else `security` allows — encrypted file when `encrypt_tokens` and
+`master_password` are on, plain file when `allow_plaintext_tokens` is on, or an
+error when neither is.
+
+Use it when the keychain is unavailable or would block: headless servers, CI
+runners, and containers, where an unguarded keychain call can hang waiting for
+an unlock prompt. GCM's own test suite sets it so tests can never reach a
+developer's real login keychain.
+
+```bash
+GCM_NO_KEYCHAIN=1 gcm auth status
+```
+
+It is enforced inside the keychain accessors themselves, so no code path can
+bypass it.
 
 ---
 

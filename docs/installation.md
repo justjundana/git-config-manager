@@ -44,6 +44,19 @@ curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main
 curl -fsSL https://raw.githubusercontent.com/justjundana/git-config-manager/main/scripts/install.sh | bash -s -- --no-init
 ```
 
+> **Windows support is only partly verified.** GCM builds and installs there,
+> and CI now runs tests on Windows rather than only compiling — which
+> immediately caught four real defects, all fixed in v1.1.1. Seven packages run
+> as a blocking gate, including the shell-integration code that rewrites your
+> rc file. The credential helper, token storage and key handling are still
+> compiled but not executed there.
+>
+> One consequence is known and documented: POSIX directory permissions are not
+> enforced, so `~/.gcm/tokens/`, `backups/` and `logs/` are not
+> access-restricted on Windows — see
+> [Security](security.md#platform-caveat-windows). Prefer the Credential
+> Manager backend over file-based token storage there.
+
 On Windows, use PowerShell:
 
 ```powershell

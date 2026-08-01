@@ -210,6 +210,17 @@ GCM can remove its own hooks:
 gcm init  # (if a future --uninstall flag is added)
 ```
 
+> **Both markers must be present.** Automated removal refuses when the closing
+> `# <<< GCM shell integration <<<` marker is missing, because a block that
+> never closes would otherwise be deleted all the way to the end of the file —
+> taking your own aliases and exports with it. If you hit that refusal, delete
+> the block by hand as shown below.
+>
+> When it does rewrite the file, it writes atomically (temp file + rename) and
+> preserves the file's existing permissions rather than forcing `0644`.
+> `scripts/uninstall.sh` additionally leaves a `.gcm-uninstall.bak` copy beside
+> the file.
+
 ### Manual
 
 Open your shell config file and delete everything between the markers:

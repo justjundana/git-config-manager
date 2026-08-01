@@ -119,15 +119,40 @@ Remove the GCM shell hook from your shell config file.
 If you want to reset your Git identity to manual management:
 
 ```bash
-# Remove any .gcm-profile files from your projects
-find ~/projects -name ".gcm-profile" -delete
-
-# Remove session markers from git repositories
-find ~/projects -path "*/.git/gcm-session" -delete
+# Review the markers before deleting them — a .gcm-profile is a file you wrote
+# to pin a profile to a project, not something GCM created behind your back
+find ~/projects -name ".gcm-profile"
+find ~/projects -path "*/.git/gcm-session"
 
 # Set your Git identity manually
 git config --global user.name "Your Name"
 git config --global user.email "you@example.com"
+```
+
+**What `scripts/uninstall.sh` does here, and what it will not do.**
+
+It removes `user.name`, `user.email`, `user.signingkey` and `core.sshCommand`
+from your global git config **only when the current value matches one of your
+GCM profiles** — that is what proves GCM wrote it. A value it cannot attribute
+is listed and left in place, along with the command to remove it yourself.
+`commit.gpgsign`, `gpg.format`, `gpg.program` and the `tag.*` keys are settings
+rather than identity and cannot be attributed at all, so they are always
+reported rather than removed.
+
+This runs before `~/.gcm` is deleted, so the profiles are still there to
+compare against. If you remove the data directory first, the uninstaller has
+nothing to match and will leave your git config alone.
+
+Project markers are listed and confirmed before deletion rather than swept
+away.
+
+**Credential helpers.** Registering GCM resets `credential.<host>.helper` so
+its helper wins; whatever you had before is parked under
+`gcm.saved.<host>.helper` and restored when GCM is unregistered. To check what
+is stored:
+
+```bash
+git config --global --get-all "gcm.saved.https://github.com.helper"
 ```
 
 ### Step 4: Remove GCM Data Directory
@@ -149,28 +174,41 @@ This removes:
 
 ### Step 5: Remove GitHub Tokens from Keychain
 
-If you used keychain storage for GitHub tokens:
+If you used keychain storage for provider tokens:
+
+GCM writes every token under a single service label, **`git-config-manager`**.
+The account name identifies the entry:
+`<profile>__<provider>__<host>__<account>` — for example
+`personal__gitlab__gitlab_com__default`. Tokens from before provider-aware
+storage use the bare profile name as the account.
 
 **macOS**:
 ```bash
-# Open Keychain Access app and search for "gcm"
-# Or use security CLI:
-security delete-generic-password -s "gcm-github-token-work" 2>/dev/null
-security delete-generic-password -s "gcm-github-token-personal" 2>/dev/null
+# List what GCM stored
+security find-generic-password -s "git-config-manager"
+
+# Remove entries one at a time (repeat until none remain)
+while security delete-generic-password -s "git-config-manager" 2>/dev/null; do :; done
 ```
+
+Do **not** delete by `-s github.com`: that service holds credentials written by
+your browser, `git-credential-osxkeychain` and other tools, none of which
+belong to GCM.
 
 **Linux**:
 ```bash
-# Use secret-tool to remove stored tokens
-secret-tool clear service gcm-github-token-work
-secret-tool clear service gcm-github-token-personal
+secret-tool clear service git-config-manager
 ```
 
 **Windows**:
 ```powershell
 # Open Credential Manager → Windows Credentials
-# Find and remove entries starting with "gcm-github-token-"
+# Find and remove entries whose target contains "git-config-manager"
+cmdkey /list | Select-String "git-config-manager"
 ```
+
+`scripts/uninstall.sh` performs the macOS cleanup for you, scoped to the
+`git-config-manager` service only.
 
 ### Step 6: Remove the Binary
 

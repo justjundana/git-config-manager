@@ -389,6 +389,11 @@ Shell
 | **Profiles: 3** | Number of profile YAML files included |
 | **Templates: 1** | Number of template YAML files included |
 
+If `Profiles: 0` appears unexpectedly, the backup was **not** created — GCM
+refuses when the profiles directory cannot be read, rather than writing an
+empty archive and then pruning the older backups that did contain your
+profiles.
+
 ### `gcm backup restore <file>`
 
 ```
@@ -396,6 +401,9 @@ Shell
 ```
 
 **"Overwrite current data"** means: your current `config.yaml`, profiles, and templates will be replaced with what's in the backup. Make sure you want this.
+
+Profiles and templates are written to the directories your configuration
+actually uses (`profiles_dir`, `templates_dir`), not blindly under `~/.gcm`.
 
 ### `gcm backup prune --keep <n>`
 

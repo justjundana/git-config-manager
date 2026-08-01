@@ -49,6 +49,12 @@ When `security.use_keychain: true`, tokens are stored in the platform's credenti
 
 **Library:** `github.com/zalando/go-keyring`
 
+**Kill switch.** Setting `GCM_NO_KEYCHAIN=1` makes every keychain read, write
+and delete fail closed, without reaching the platform store. Storage then falls
+back to whichever other backend `security` permits, or fails closed if none is
+configured. It is enforced inside the keychain accessors themselves, so no call
+site can bypass it. See [Configuration](configuration.md#gcm_no_keychain).
+
 ### 2. Encrypted File
 
 When `security.encrypt_tokens: true` and `security.master_password: true`:
@@ -265,6 +271,18 @@ GCM only stores the **GPG key ID** in the profile YAML. The actual key material 
 | `backups/*.tar.gz`     | `0600` | Unencrypted configuration snapshots |
 | SSH private keys       | `0600` | Standard SSH requirement            |
 | SSH public keys        | `0644` | Standard SSH requirement            |
+
+### Platform caveat: Windows
+
+The modes above are POSIX permissions and are enforced on macOS and Linux. On
+Windows, Go's `os.Chmod` only toggles the read-only attribute — it does not
+restrict access by other users. `~/.gcm/tokens/`, `~/.gcm/backups/` and
+`~/.gcm/logs/` are therefore **not** access-restricted by GCM on Windows, and
+the protection those `0700` modes provide elsewhere does not apply.
+
+On Windows, rely on the OS keychain backend (Credential Manager, the default)
+rather than file-based token storage, and on NTFS ACLs inherited from your user
+profile directory.
 
 ---
 

@@ -65,6 +65,11 @@ Shows: active profile, all profiles summary, provider auth status, SSH keys, and
 
 Provider token checks are bounded-concurrent when `advanced.parallel_operations` is enabled, so status stays responsive with many profiles.
 
+`gcm status` only reads. When a profile's SSH key should be renamed to the
+provider-aware layout it reports that and points at `gcm repair --fix`, which
+performs the rename. Earlier versions performed it from `status` itself, so
+viewing the dashboard modified key files and profile YAML.
+
 For credential ownership, helper source, and external-auth inspection, use `gcm auth status` or `gcm auth inspect`.
 
 ---
@@ -364,6 +369,15 @@ gcm profile rm old-work            # alias
 | ------- | ----- | ------- | -------------------- |
 | `--yes` | `-y`  | false   | Skip confirmation    |
 
+**What it removes:** the profile file, its stored provider tokens, and — only
+when the generated-keys ledger records that GCM created them — the profile's
+SSH key pair and GPG key. A key you generated yourself and merely attached to
+the profile is kept and reported, because deleting it would be irreversible.
+If the ledger cannot be read the keys are kept.
+
+Deleting the profile that `default_profile` points at also clears that setting
+in `config.yaml`.
+
 **Aliases:** `rm`
 
 ### `gcm profile export <name>`
@@ -423,6 +437,15 @@ gcm use work --dry-run       # preview changes, apply nothing
 9. Verifies configured provider token validity (best-effort, warns if expired)
 
 > **Credential Isolation:** After switching, git clone/push/pull will only work with the active profile's configured provider account. Other profiles' credentials cannot bleed through.
+
+**SSH key renaming is offered, not performed.** When the profile's key still
+uses the pre-provider naming (`id_ed25519_work` rather than
+`id_ed25519_work_github`), `gcm use` shows both paths and asks before moving
+anything. Declining leaves the key where it is. With no terminal to answer —
+a script, or the shell hook — nothing is renamed and the suggestion points at
+`gcm repair --fix`, which performs the rename because there it is what you
+asked for. Keys that do not follow GCM's naming convention, such as `id_rsa`,
+are never candidates.
 
 **Scopes:**
 - **Session** (default, in a git repo) — writes a `.git/gcm-session` marker file for reliable detection, plus local git config
@@ -596,6 +619,14 @@ gcm ssh clean --yes        # delete without prompting
 3. Lists keys that GCM generated but no profile references anymore
 4. After confirmation, deletes the private/public key files, removes the key from the SSH agent, and prunes the ledger entry
 
+**Safety:** the command decides what to delete from what is *absent* from the
+profile inventory, so it refuses to run unless that inventory is verifiably
+complete. It stops with an error when the profiles directory is missing or
+unreadable, or when any profile file fails to parse — otherwise a broken
+`profiles_dir` or a single YAML typo would make every generated key look
+orphaned. Keys you created yourself are never eligible: only entries in the
+ledger are considered.
+
 Only keys that GCM itself generated are ever considered. SSH keys you created yourself, or keys GCM merely linked to a profile (adopted), are never recorded in the ledger and are therefore always left untouched.
 
 ---
@@ -703,6 +734,11 @@ gcm gpg clean --yes        # delete without prompting
 2. Compares each recorded key against the GPG key IDs used by every profile
 3. Lists keys that GCM generated but no profile references anymore
 4. After confirmation, deletes each key from the local GPG keyring and prunes the ledger entry
+
+**Safety:** same refusals as `gcm ssh clean` — an unreadable profiles directory
+or an unparseable profile stops the command rather than treating every ledger
+entry as orphaned. GPG keys you generated yourself are never in the ledger and
+so are never touched.
 
 Only keys that GCM itself generated are ever considered. GPG keys you created yourself are never recorded in the ledger and are therefore always left untouched.
 
@@ -985,6 +1021,18 @@ gcm backup create
 
 `backup.encryption: true` and `backup.include_keys: true` fail closed because encrypted/key-inclusive backups are not implemented yet. After creation, configured `backup.retention_days` and `backup.max_backups` are enforced best-effort.
 
+**Refuses on an unreadable profiles directory.** Writing an archive with no
+profiles in it and *then* pruning the older backups that did contain them would
+destroy the only copies, so a `profiles_dir` that cannot be read stops the
+command. An existing but empty directory is fine — that is a fresh install.
+
+Age-based pruning never removes the most recent backup, so a
+`retention_days` window shorter than the gap since your last backup cannot
+leave you with nothing to restore from.
+
+Archive entries use forward-slash names, so a backup created on one platform
+restores on any other.
+
 ### `gcm backup list`
 
 List all backups.
@@ -1005,6 +1053,12 @@ gcm backup restore ~/.gcm/backups/gcm-backup-2026-05-18-143000.tar.gz
 ```
 
 Restoration is staged before live files are replaced and is guarded against path-traversal (zip-slip) attacks.
+
+Profiles and templates are restored into the directories the running
+configuration actually uses (`profiles_dir` and `templates_dir`), not blindly
+under `~/.gcm`. With a customised `profiles_dir` the older behaviour wrote to a
+location GCM never reads, so restore reported success while the profiles stayed
+missing.
 
 ### `gcm backup prune`
 
@@ -1072,6 +1126,12 @@ gcm clean --all      # also remove logs directory
 | `--all` | false   | Also clean the logs directory              |
 
 **Note:** This does *not* remove profiles, tokens, or backups. For a full reset, see [Troubleshooting](troubleshooting.md#full-reset).
+
+**`cache_dir` is validated before deletion.** The directory is removed
+recursively and its path comes from `config.yaml`, so GCM refuses when it is
+empty, relative, the filesystem root, your home directory, or any directory
+that contains your home directory or `~/.gcm`. A cache directory you have
+legitimately relocated elsewhere still works.
 
 ---
 

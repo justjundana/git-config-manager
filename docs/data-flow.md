@@ -358,7 +358,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Start[SaveToken] --> CheckKeychain{use_keychain?}
+    Start[SaveToken] --> KillSwitch{GCM_NO_KEYCHAIN=1?}
+    KillSwitch -->|Yes| SkipKeychain[Keychain fails closed]
+    KillSwitch -->|No| CheckKeychain{use_keychain?}
     CheckKeychain -->|Yes| TryKeychain[Store in OS keychain]
     TryKeychain --> KeychainOK{Success?}
     KeychainOK -->|Yes| Done[Done]

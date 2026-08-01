@@ -370,6 +370,18 @@ gcm profile diff work personal                    # side-by-side comparison
 
 Profile names must start with a letter or digit and may contain only letters, digits, `-`, or `_`. Names that differ only by case cannot coexist.
 
+> **SSH key renaming asks first.** When a profile's key still uses the
+> pre-provider naming, `gcm use` shows the current and target paths and asks
+> before moving it. Declining leaves it alone; with no terminal to answer
+> nothing is renamed. `gcm repair --fix` performs it directly.
+
+> **What `delete` removes.** The profile file and its stored provider tokens,
+> plus the SSH key pair and GPG key **only when the generated-keys ledger
+> records that GCM created them**. A key you generated yourself and merely
+> attached to the profile is kept and reported — deleting it would be
+> irreversible. Deleting the profile that `default_profile` points at also
+> clears that setting in `config.yaml`.
+
 ---
 
 ## 9. SSH Key Management
@@ -576,6 +588,14 @@ gcm backup prune --keep 10         # keep the last 10
 
 Backups are stored in `~/.gcm/backups/` (permissions forced to `0700`). Restore extraction is guarded against path-traversal ("zip-slip") — any entry pointing outside the target directory is rejected.
 
+`create` refuses when the profiles directory cannot be read, rather than
+writing an archive with no profiles in it and then pruning the older backups
+that did contain them. Age-based pruning always keeps the most recent backup.
+`restore` writes profiles and templates into the directories the running
+configuration uses (`profiles_dir`, `templates_dir`), so a customised layout is
+honoured. Archive entry names use forward slashes, so a backup created on one
+platform restores on any other.
+
 Before overwriting, `restore` asks for confirmation unless you've already exported the profiles you care about.
 
 ---
@@ -676,7 +696,8 @@ See [configuration.md](configuration.md) for a full field reference.
 - **GPG batch input validation** — control characters and `%` are rejected to prevent parameter-file injection.
 - **Audit log** — `~/.gcm/logs/audit-YYYY-MM-DD.jsonl`, one JSON object per state change (profile switch, key generation, token write, backup, restore).
 - **Backup restore** — zip-slip check rejects any archive entry escaping the target directory.
-- **Shell integration** — framed with `# >>> GCM shell integration >>>` / `# <<< GCM shell integration <<<` so uninstall is exact.
+- **Shell integration** — framed with `# >>> GCM shell integration >>>` / `# <<< GCM shell integration <<<` so uninstall is exact. If the closing marker is missing, removal refuses rather than deleting everything from the opening marker to end of file. The rewrite is atomic and preserves the file's existing permissions.
+- **Key deletion** — only key material recorded in `~/.gcm/generated-keys.json` is ever removed; keys you created yourself are never eligible.
 - **HTTP client** — 30 s timeout, context-aware OAuth polling with a 15 min overall deadline.
 
 ---
@@ -855,6 +876,10 @@ gcm clean        # remove cache directory
 gcm clean --all  # also remove logs directory
 ```
 
+`cache_dir` is validated before the recursive delete: empty, relative, the
+filesystem root, your home directory, or any directory containing your home
+directory or `~/.gcm` are refused.
+
 If you need to fully reset GCM, back up first and then remove the data directory manually:
 
 ```bash
@@ -882,6 +907,13 @@ rm -rf ~/.gcm    # irreversible — make sure you have a backup
    ```
 
 Done. Your SSH keys in `~/.ssh/` are untouched; only the GCM-managed data directory is removed.
+
+> This is the manual route. `scripts/uninstall.sh` goes further and offers to
+> remove the SSH/GPG keys **GCM generated**, read from
+> `~/.gcm/generated-keys.json` — keys you created yourself are never eligible,
+> and it aborts rather than guessing if the ledger cannot be read. Removing
+> `~/.gcm` first destroys that ledger, so run the script before deleting the
+> data directory if you want the keys cleaned up too.
 
 ---
 

@@ -31,6 +31,7 @@ git-config-manager/
 │   └── template/              # Configuration templates
 ├── pkg/                       # Public shared libraries
 │   ├── logger/                # Structured logging
+│   ├── testutil/              # Hermetic sandbox for tests
 │   ├── ui/                    # Terminal UI (prompts, tables)
 │   └── version/               # Build version info
 ├── docs/                      # Documentation
@@ -309,6 +310,39 @@ Structured logging.
 | `logger_test.go`  | Tests                                                 |
 
 Fields use `logger.F("key", "value")` syntax.
+
+---
+
+## `pkg/testutil/`
+
+Keeps the test suite from touching real user state.
+
+| File               | Purpose                                                        |
+| ------------------ | -------------------------------------------------------------- |
+| `isolate.go`       | `Isolate(t)` per test, `RunIsolated(m)` per package via `TestMain` |
+| `isolate_test.go`  | Tests (100% of statements)                                     |
+
+GCM's production job is to rewrite host state — `git config --global`,
+credential helpers, SSH/GPG keys, `~/.gcm` — so its tests exercise code that
+writes to the real machine by default. Both helpers redirect five channels into
+a throwaway directory: `HOME`, the three git config scopes, the OS keychain
+(`GCM_NO_KEYCHAIN`), the ssh-agent (`SSH_AUTH_SOCK`) and the GPG keyring
+(`GNUPGHOME`).
+
+`HOME` alone is not enough. On macOS the Xcode-provided *system* gitconfig sets
+`credential.helper=osxkeychain` and survives a `HOME` override, and both
+ssh-agent and gpg resolve through their own variables rather than `HOME`.
+
+Every test package installs it from the test file mirroring the package's
+primary source file:
+
+```go
+func TestMain(m *testing.M) { os.Exit(_testutil.RunIsolated(m)) }
+```
+
+It lives in `pkg/` rather than `internal/` because it carries no GCM domain
+knowledge — only generic redirection. It is imported solely by `_test.go`
+files, so it is not linked into the released binary.
 
 ---
 

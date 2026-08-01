@@ -20,9 +20,27 @@ GCM is a static Go binary with minimal dependencies. Most features work out of t
 | Ubuntu 20.04+ / Debian 11+ | amd64, arm64 | ✅ Fully supported |
 | Fedora 36+ / RHEL 9+ | amd64, arm64 | ✅ Fully supported |
 | Arch Linux | amd64 | ✅ Fully supported |
-| Windows 10/11 | amd64 | ✅ Fully supported |
+| Windows 10/11 | amd64 | ⚠️ Builds and installs; not verified end to end (see notes) |
 | WSL 1/2 | amd64, arm64 | ✅ Supported (see notes) |
 | FreeBSD | amd64 | ⚠️ Untested |
+
+> **Windows status.** GCM compiles for Windows, and CI executes part of the
+> test suite there — seven packages as a blocking gate, including the
+> shell-integration code that rewrites your rc file. Running those tests on
+> Windows for the first time caught four real defects, all fixed in v1.1.1. The
+> credential helper, token storage and key handling are compiled but not yet
+> executed there; a second, non-blocking CI step runs the whole suite to
+> surface what remains.
+>
+> One consequence is known: POSIX directory modes are not enforced. Go's
+> `os.Chmod` on Windows only toggles the read-only attribute, so
+> `~/.gcm/tokens/`, `backups/` and `logs/` are not access-restricted there.
+> Prefer the Credential Manager backend over file-based token storage. See
+> [Security](security.md#platform-caveat-windows).
+>
+> `uninstall.ps1` reads the generated-keys ledger like `uninstall.sh` does, and
+> CI parses both PowerShell scripts, but neither has been executed on a real
+> Windows host by this project.
 
 ### Disk Space
 

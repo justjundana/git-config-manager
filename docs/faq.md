@@ -136,7 +136,18 @@ This deletes the YAML file. SSH keys in `~/.ssh/` are NOT deleted.
 
 ### Does deleting a profile delete my SSH keys?
 
-No. GCM only deletes the profile YAML file. Your SSH keys in `~/.ssh/` are untouched.
+Only the ones GCM generated for it.
+
+When GCM creates a key it records it in `~/.gcm/generated-keys.json`. Deleting
+the profile removes the key pair (and the GPG key) only when the ledger says
+GCM created it. A key you generated yourself and attached to the profile is
+kept, and GCM tells you it kept it. If the ledger cannot be read, the key is
+kept.
+
+> Earlier versions deleted the profile's SSH key pair and GPG *secret* key
+> unconditionally, including keys you had created yourself. If you deleted a
+> profile with an adopted key on an older version, that key is gone — restore
+> it from your own backup.
 
 ---
 
@@ -211,7 +222,11 @@ No client secret needed. Works over SSH.
 
 ### How are provider tokens stored?
 
-By default, in your OS keychain (macOS Keychain, Linux secret-service, Windows Credential Manager). If keychain isn't available, tokens are encrypted with AES-256-GCM and stored in `~/.gcm/tokens/`.
+By default, in your OS keychain (macOS Keychain, Linux secret-service, Windows Credential Manager) under the service label `git-config-manager`. If keychain isn't available, tokens are encrypted with AES-256-GCM and stored in `~/.gcm/tokens/`.
+
+Set `GCM_NO_KEYCHAIN=1` to skip the keychain entirely — useful on headless,
+CI and container hosts where a keychain call can hang waiting for an unlock
+prompt. See [Configuration](configuration.md#gcm_no_keychain).
 
 ### Why does Git work while GCM says the profile is not authenticated?
 

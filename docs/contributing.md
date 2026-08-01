@@ -122,13 +122,74 @@ refactor: simplify profile switcher logic
 
 ### Testing Guidelines
 
-- **90%+ coverage** is enforced for all packages
+- **90%+ coverage** is enforced for all packages; every package except
+  `internal/cli` is currently at 100% of statements
 - Use **table-driven tests** with `t.Run()`
 - Mock OS dependencies with **function variable hooks** (not interfaces)
 - Use `t.TempDir()` for filesystem tests
 - Use `t.Setenv()` for environment variable tests
 - Use `httptest.Server` for HTTP tests
 - No external test frameworks — pure `testing` package
+
+#### Tests must never touch real host state
+
+GCM's job is to rewrite the machine's git identity, credential helpers and
+SSH/GPG keys, so its tests exercise code that writes to `$HOME` by default.
+Every test package therefore installs a sandbox from `TestMain`:
+
+```go
+func TestMain(m *testing.M) {
+	os.Exit(_testutil.RunIsolated(m))
+}
+```
+
+`pkg/testutil` redirects `HOME`, all three git config scopes, the OS keychain,
+the ssh-agent and `GNUPGHOME` into a throwaway directory. Keep that `TestMain`
+in place when adding a package, and put it in the test file that mirrors the
+package's primary source file (`manager.go` → `manager_test.go`).
+
+Individual tests may call `_testutil.Isolate(t)` for their own directory, but
+the process-wide sandbox is what makes forgetting to do so safe — a per-test
+opt-in is exactly what failed before: one helper isolated `HOME` while another
+did not, and the tests built on the second rewrote the developer's real
+`~/.gitconfig`.
+
+When verifying a change, checksum the real state before and after a full run
+rather than assuming isolation held:
+
+```bash
+snap() { { shasum ~/.gitconfig ~/.zshrc 2>/dev/null; \
+  find ~/.gcm ~/.ssh ~/.gnupg -type f 2>/dev/null | sort | xargs shasum 2>/dev/null; \
+  ssh-add -l 2>&1; } | shasum; }
+B=$(snap); go test -race ./...; A=$(snap); [ "$B" = "$A" ] || echo "HOST STATE CHANGED"
+```
+
+#### Cross-platform tests
+
+Never set the home directory with `t.Setenv("HOME", dir)`. `os.UserHomeDir`
+reads `$HOME` on Unix but `%USERPROFILE%` on Windows, so that call is a no-op
+there — and under the package sandbox it leaves every test resolving to the
+same shared home, letting state leak between them. Use the helper:
+
+```go
+home := t.TempDir()
+_testutil.SetHome(t, home)   // sets HOME and USERPROFILE
+```
+
+Three `internal/shell` tests failed exactly this way the first time the suite
+ran on Windows CI, and passed on macOS and Linux throughout.
+
+The environment overrides cannot protect the repository-local git scope:
+`git config --local` resolves the repository from the *working directory*, so a
+test that activates a profile while the process sits inside this checkout
+writes into its own `.git/config` and drops a `.git/gcm-session` marker beside
+it. Neither `GIT_CONFIG_GLOBAL` nor `HOME` affects that. Use
+`_testutil.WorkDir(t)` in any test exercising code that resolves a repository
+from the working directory.
+
+POSIX mode bits and `chmod`-to-block-access do not mean anything on Windows
+either. Guard such assertions with `runtime.GOOS`, and avoid Unix-only binaries
+such as `true`/`false` in `exec` fakes.
 
 ### Adding a New Command
 

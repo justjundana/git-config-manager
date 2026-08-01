@@ -69,6 +69,46 @@ gcm profile delete work -y
 gcm profile create work -i
 ```
 
+While a profile file is unparseable, `gcm ssh clean` and `gcm gpg clean` refuse
+to run and name the offending file. That is deliberate: a profile that fails to
+parse disappears from the profile listing, so its SSH and GPG keys would look
+referenced by nobody and become eligible for deletion. Fix or remove the file
+first, then clean.
+
+### "refusing to clean: ... profiles directory ... is missing or unreadable"
+
+`gcm ssh clean` / `gcm gpg clean` decide what to delete from what is *absent*
+from the profile inventory, so they stop when that inventory cannot be trusted.
+
+```bash
+gcm doctor                       # check where profiles_dir points
+grep profiles_dir ~/.gcm/config.yaml
+```
+
+The usual cause is a `profiles_dir` in `config.yaml` pointing somewhere that no
+longer exists. Repointing it at `~/.gcm/profiles` (or running `gcm repair
+--fix`) resolves it. Your keys are untouched while the command refuses.
+
+### "refusing to create a backup: profiles directory ... cannot be read"
+
+Same root cause, from `gcm backup create`. Writing an archive containing no
+profiles and then pruning the older backups that *did* contain them would
+destroy the only copies, so the command stops instead. An existing but empty
+profiles directory is fine.
+
+### "refusing to delete ...: that is the home directory"
+
+`gcm clean` removes `cache_dir` recursively and validates it first. This means
+`cache_dir` in `config.yaml` points at your home directory, the filesystem
+root, or a directory containing them. Set it back to `~/.gcm/cache`.
+
+### "refusing to save ...: profiles_dir points into the temporary directory"
+
+`config.yaml` was about to be written with a data directory inside the OS temp
+area, which the operating system deletes periodically — profiles stored there
+vanish with no delete ever issued. Point `profiles_dir`, `templates_dir` and
+`cache_dir` back under `~/.gcm`, or run `gcm repair --fix`.
+
 ---
 
 ## SSH Issues
