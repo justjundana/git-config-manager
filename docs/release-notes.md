@@ -12,6 +12,48 @@ GCM follows [Semantic Versioning](versioning.md). Version numbers are `MAJOR.MIN
 
 ## Latest Release
 
+### v1.1.1
+
+**Release Date:** August 01, 2026
+
+#### Highlights
+
+- **Data-safety release** — several commands could destroy key material, backups or shell configuration that GCM never created, and the profile store itself could be silently relocated into a directory the operating system deletes
+- **`GCM_NO_KEYCHAIN=1`** — disables OS keychain access entirely; useful on headless, CI and container hosts. See [Configuration](configuration.md#gcm_no_keychain)
+- **Hermetic test sandbox** — every test package redirects `HOME`, the git config scopes, the keychain, the ssh-agent and `GNUPGHOME` into a throwaway directory, so the suite can no longer rewrite a developer's real `~/.gcm`, `~/.gitconfig` or login keychain
+- **`shellcheck` in CI** — gates `scripts/*.sh` at warning severity and blocks releases
+
+#### Behavior Changes
+
+- **`gcm status` is read-only again** — it ran the SSH key rename migration for every profile, so viewing the dashboard renamed files and rewrote profile YAML. It now reports the pending rename and points at `gcm repair --fix`
+- **SSH key renaming now asks first** — `gcm use`, `gcm connect` and provider removal renamed the profile's key file as a side effect. They show both paths and ask now; with no terminal to answer nothing is renamed, and `gcm repair --fix` still does it directly
+- **`gcm use` / `gcm connect` no longer run `git credential reject` against other providers** — git credentials are host-scoped, so the loop only deleted credentials GCM never created
+- **Backup archives use forward-slash entry names**, so a backup created on Windows can be restored. Previously it could not be restored anywhere
+- **`uninstall.sh` and `uninstall.ps1` read the generated-keys ledger** — neither guesses which SSH/GPG keys are GCM's, and both abort rather than guess when the ledger cannot be parsed. `uninstall.sh` also stops removing every `github.com` credential on the machine
+- **Uninstall no longer removes a git identity GCM did not set** — it unset `user.name`, `user.email` and seven other keys unconditionally, destroying identities configured long before GCM existed. Only values matching one of your profiles are removed; the rest are listed and left alone
+- **Uninstall asks before deleting `.gcm-profile` markers**, which you wrote, and the installer no longer deletes a file named `gcm` that it cannot identify — "GCM" is also Git Credential Manager
+- **A credential helper you already had is restored on uninstall**, parked under `gcm.saved.<host>.helper` while GCM is registered
+
+#### Bug Fixes
+
+- **`gcm ssh clean` / `gcm gpg clean` could delete every generated key** — the "still in use" inventory came from the profile listing, which reports no matches *and no error* when the profiles directory is missing, so an absent store marked every ledger entry orphaned. A profile with a YAML typo caused the same for that profile's keys. Both commands now refuse unless the inventory is verifiably complete
+- **`gcm profile delete` deleted keys you created yourself** — it removed the profile's SSH key pair and GPG *secret* key unconditionally, even when the profile merely pointed at a key you already had
+- **`gcm backup create` could destroy your backup history** — an unreadable profiles directory was swallowed, an empty archive written, success reported, and retention pruning then removed the older backups that did contain profiles. Age-based pruning also had no floor and could remove every backup
+- **`gcm backup restore` restored nothing** when `profiles_dir` was customised: it always wrote under `~/.gcm` regardless of configuration
+- **`gcm clean` could delete your home directory** — it ran a recursive delete straight on `cache_dir` from the config file, unvalidated
+- **Shell integration removal could truncate your rc file** — a missing end marker meant everything from the start marker to end of file was dropped, taking your own aliases and exports with it
+- **`config.yaml` could relocate profiles into the OS temp directory**, where they are purged periodically — profiles vanished with no delete ever issued
+- **Atomic writes are atomic on Windows** — the target was unlinked before renaming, leaving a window with no file at all. The rename is attempted first now, retried after clearing the read-only attribute only when that is what blocked it
+- **PowerShell profile path** — shell integration always targeted `Documents\PowerShell` (PowerShell 7). Windows PowerShell 5.1 uses `Documents\WindowsPowerShell`, and `Documents` is often redirected into OneDrive
+- **`uninstall.ps1` aborted part-way through** — it looped `foreach ($host in ...)`, and `$host` is a PowerShell automatic variable, so assigning to it throws — after the git identity step had already run
+
+#### Known Issues
+
+- **Windows is only partly covered by CI.** It now executes tests rather than only compiling them, which immediately caught four real defects, all fixed here. Seven packages run as a blocking gate; a second, non-blocking step runs the whole suite to surface what remains. Much of the rest asserts POSIX mode bits or uses `chmod` to block access, neither of which means anything on Windows, so failures there are expected until those tests are made portable
+- **POSIX directory modes are not enforced on Windows** — `~/.gcm/tokens/`, `backups/` and `logs/` are not access-restricted there. Prefer the Credential Manager backend over file-based token storage. See the [Windows caveat](security.md#platform-caveat-windows)
+
+---
+
 ### v1.1.0
 
 **Release Date:** July 01, 2026
